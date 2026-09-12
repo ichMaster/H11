@@ -206,9 +206,16 @@ func _build_walls() -> void:
 
 
 ## Adds one vertical, WALL_H-tall face of the cell centred at `center`, on the
-## side given by `normal`. Vertices go bottom-left, bottom-right, top-right,
-## top-left as seen by someone standing in front of the face, which is
-## counter-clockwise (Godot's front-face winding) and keeps texture text readable.
+## side given by `normal`.
+##
+## Winding matters and is easy to get backwards: Godot treats CLOCKWISE
+## triangles as front-facing, the opposite of the OpenGL default. Emitting them
+## counter-clockwise - bottom-left, bottom-right, top-right - makes every face
+## back-facing from the side it is meant to be seen from, and `cull_back` in the
+## shader then discards it. That is invisible in a corridor, where the far wall's
+## own face happens to fill the hole, and glaring at the edge of the level, where
+## there is nothing behind: the whole perimeter rendered as pure black.
+## UVs stay bound to their vertices, so the order below does not mirror anything.
 func _add_face(st: SurfaceTool, center: Vector3, normal: Vector3, shade: float) -> void:
 	var right := (-normal).cross(Vector3.UP)
 	var bottom := center + normal * (CELL / 2.0)
@@ -221,11 +228,11 @@ func _add_face(st: SurfaceTool, center: Vector3, normal: Vector3, shade: float) 
 	st.set_normal(normal)
 	st.set_color(col)
 	st.set_uv(Vector2(0, 1)); st.add_vertex(a)
+	st.set_uv(Vector2(1, 0)); st.add_vertex(c)
 	st.set_uv(Vector2(1, 1)); st.add_vertex(b)
-	st.set_uv(Vector2(1, 0)); st.add_vertex(c)
 	st.set_uv(Vector2(0, 1)); st.add_vertex(a)
-	st.set_uv(Vector2(1, 0)); st.add_vertex(c)
 	st.set_uv(Vector2(0, 0)); st.add_vertex(d)
+	st.set_uv(Vector2(1, 0)); st.add_vertex(c)
 
 
 func _build_floor_ceiling() -> void:
