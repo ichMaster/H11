@@ -72,6 +72,56 @@ Invariants any generator or editor must preserve: every row the same length; exa
 grid rectangular; walkable cells reachable. From v1 these are validated at load in release builds,
 not by `assert` (which is stripped) — see §Failure modes.
 
+## Input
+
+Twelve actions, bound at runtime. Until v0.9 they came from a `KEYMAP` dictionary in `game.gd` on
+**physical** keycodes (so the scheme survives a keyboard-language change); from v0.9 they come from
+`data/input.json`, and every input device binds to the same action ids so nothing downstream learns
+which device produced an action.
+
+### What the PocketTerm's buttons actually emit
+
+Captured from `/dev/input/event0` on the device (v0.9, H11-015). **Every button is an ordinary
+keyboard key — there is no `BTN_*` anywhere**, and the twelve gamepad codes the keyboard advertises
+in its capability bitmap are never used. The system exposes no joystick device. So `physical_keycode`
+binding reaches all eight, and the game needs no joypad path.
+
+| Button | Code | Key |
+|---|---|---|
+| X | 45 | `KEY_X` |
+| A | 30 | `KEY_A` |
+| B | 48 | `KEY_B` |
+| Y | 21 | `KEY_Y` |
+| L | 38 | `KEY_L` |
+| R | 19 | `KEY_R` |
+| Select | 99 | `KEY_SYSRQ` |
+| Start | 119 | `KEY_PAUSE` |
+
+Each button sends the letter of its own label; Select and Start send SysRq and Pause. A/B/Y/L/R were
+captured in one clean pass in press order; X was confirmed separately, twice, after the first pass
+lost it to the capture script's startup latency.
+
+### Two profiles, because the codes collide
+
+The buttons are the same physical keycodes the development keyboard scheme already uses, so the two
+schemes cannot both be active: `A` is `turn_left` on the Mac and `use` on the device, `X` is
+`strafe_right` and `run`, `R` is `restart` and `strafe_right`. `data/input.json` therefore carries
+**two profiles** and `Game.on_device` selects between them — the same flag that already switches to
+fullscreen. A binding conflict *within* a profile is a load-time failure (v0.9, H11-017); a
+difference *between* profiles is the point.
+
+| | `desktop` (Mac, development) | `device` (PocketTerm) |
+|---|---|---|
+| move | W/S, ↑/↓ | D-pad |
+| turn | A/D, ←/→ | D-pad |
+| strafe | Q/E, Z/X | **L** / **R** |
+| fire | Space, Ctrl | **B** |
+| use | F, Enter | **A** |
+| run | Shift | **X** |
+| next weapon | — (v3.1) | **Y** |
+| pause / restart | R | **Start** |
+| automap / fps | F3 | **Select** |
+
 ## Geometry construction
 
 `_build_walls` emits, per wall cell, only the faces adjacent to a walkable cell, merged into **one
