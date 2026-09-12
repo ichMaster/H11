@@ -27,6 +27,11 @@ var _t := 0.0
 var _shot := 0
 var _last_message := ""
 var _failures := 0
+## Wall-clock ceiling on a smoke run. No await in this file may outlive it; if one
+## does, the run is broken in a way no assertion anticipated and must still fail.
+const SMOKE_TIMEOUT := 90.0
+var _watchdog := 0.0
+var _last_check := "(nothing yet)"
 
 
 func _ready() -> void:
@@ -112,6 +117,12 @@ func _run_bench(delta: float) -> void:
 
 
 func _process(delta: float) -> void:
+	if smoke and _watchdog > 0.0:
+		_watchdog -= delta
+		if _watchdog <= 0.0:
+			print("[smoke] TIMEOUT after %.0fs - last check reached: %s" % [SMOKE_TIMEOUT, _last_check])
+			print("[smoke] FAILED (timeout)")
+			get_tree().quit(1)
 	if bench > 0.0:
 		_run_bench(delta)
 		return
@@ -144,6 +155,7 @@ func _process(delta: float) -> void:
 # --- headless smoke test ------------------------------------------------------
 
 func _check(name: String, ok: bool) -> void:
+	_last_check = name
 	print("[smoke] %s: %s" % ["PASS" if ok else "FAIL", name])
 	if not ok:
 		_failures += 1
@@ -161,14 +173,31 @@ func _place(level: Level, cell: Vector2i, look_at_cell: Vector2i) -> void:
 	await _frames(3)
 
 
+## Structural checks: if one of these fails the deck did not build, and every later
+## step would await something that never happens. Bail out with a non-zero exit
+## instead of hanging - a suite that hangs is worse than one that fails, because CI
+## waits forever and a person concludes the run is slow rather than broken.
+func _bail(what: String) -> void:
+	print("[smoke] ABORT: %s - the deck did not build, skipping the rest" % what)
+	print("[smoke] FAILED (%d failures)" % maxi(1, _failures))
+	get_tree().quit(1)
+
+
 func _run_smoke() -> void:
+	_watchdog = SMOKE_TIMEOUT
 	var level: Level = get_parent().get_node("Level")
 	await _frames(10)
 	_check("level parsed 32x22", level.width == 32 and level.height == 22)
+	if level.width == 0 or level.height == 0:
+		_bail("level has no geometry")
+		return
 	_check("7 mutants spawned", Game.enemies_total == 7)
 	_check("9 doors built", level.doors.size() == 9)
 	var player: CharacterBody3D = Game.player
 	_check("player spawned", player != null)
+	if player == null:
+		_bail("no player spawned")
+		return
 
 	# 1. locked door refuses without the keycard
 	var locked_cell := Vector2i(18, 15)
