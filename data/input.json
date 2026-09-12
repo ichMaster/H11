@@ -161,5 +161,28 @@
         ]
       }
     }
+  },
+  "touch": {
+    "note": "Screen zones, only active when the platform reports a touchscreen. They feed the same action ids as keys, so nothing downstream learns which device produced the action. Rects are [x, y, w, h] normalised to the 640x480 render target; the bottom 64 px are the painted status bar and belong to neither zone.",
+    "zones": [
+      {
+        "action": "use",
+        "rect": [
+          0.0,
+          0.0,
+          0.5,
+          0.867
+        ]
+      },
+      {
+        "action": "fire",
+        "rect": [
+          0.5,
+          0.0,
+          0.5,
+          0.867
+        ]
+      }
+    ]
   }
 }

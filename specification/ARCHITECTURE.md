@@ -114,6 +114,29 @@ Each button sends the letter of its own label; Select and Start send SysRq and P
 captured in one clean pass in press order; X was confirmed separately, twice, after the first pass
 lost it to the capture script's startup latency.
 
+### Touch
+
+The Goodix layer is a second device bound to the **same action ids**, so `player.gd` never learns a
+finger was involved. Two zones declared in `data/input.json` — `use` on the left half, `fire` on the
+right — over the top 87% of the screen; the bottom 64 px are the painted status bar and belong to
+neither. Godot reports a touch per finger with an index, and the handler tracks them, so lifting one
+finger releases only its own action rather than whatever the other hand is holding. Inactive unless
+`DisplayServer.is_touchscreen_available()`, so on the Mac the zones do not exist.
+
+### The 67-key layout the scheme binds into
+
+Every key in the `device` profile, and how it is known to be there:
+
+| Key | Action | Evidence |
+|---|---|---|
+| ↑ ↓ ← → | move, turn | captured on the device (codes 103/108/105/106) |
+| X A B Y L R | run, use, fire, next weapon, strafe | captured, and confirmed in the hand |
+| Select (SysRq) · Start (Pause) | fps counter · restart | captured, and confirmed in the hand |
+| M | music on/off | bound in v0.10, **not yet confirmed on the panel** |
+| Escape | quit | inherited from the desktop scheme, **not yet confirmed on the panel** |
+
+The last two are the only bindings in the profile that have never been pressed on the device.
+
 ### Two profiles, because the codes collide
 
 The buttons are the same physical keycodes the development keyboard scheme already uses, so the two

@@ -52,6 +52,8 @@ var _next_player := 0
 var _ambient: AudioStreamPlayer
 var _music: AudioStreamPlayer
 var music_enabled: bool = true
+var _touch_zones: Array[Dictionary] = []
+var _touch_held := {}  # finger index -> the action it is holding
 
 
 func _ready() -> void:
@@ -107,6 +109,7 @@ func _setup_input() -> void:
 			ev.physical_keycode = OS.find_keycode_from_string(key_name)
 			InputMap.action_add_event(action, ev)
 	input_profile = name
+	_setup_touch(table)
 
 
 ## Checks the table before a single action is registered. Not asserts: those are
@@ -145,6 +148,43 @@ func _validate_input(table: Dictionary, profile_name: String) -> String:
 		if not bind.has(action):
 			return "action '%s' is declared but profile '%s' never binds it" % [action, profile_name]
 	return ""
+
+
+## Touch is a second device bound to the SAME action ids, so player.gd never learns
+## a finger was involved. Off unless the platform actually reports a touchscreen -
+## on the Mac the zones must not exist at all.
+func _setup_touch(table: Dictionary) -> void:
+	if not DisplayServer.is_touchscreen_available():
+		return
+	var spec: Variant = table.get("touch", {}).get("zones", [])
+	if typeof(spec) != TYPE_ARRAY:
+		return
+	for z: Dictionary in spec:
+		var action: String = z.get("action", "")
+		if not InputMap.has_action(action):
+			push_error("Touch zone binds unknown action '%s'" % action)
+			return
+		var r: Array = z.get("rect", [])
+		if r.size() != 4:
+			push_error("Touch zone for '%s' has no rect" % action)
+			return
+		_touch_zones.append({"action": action, "rect": Rect2(r[0], r[1], r[2], r[3])})
+
+
+## Godot reports a touch per finger with an index; tracking them means a finger lifted
+## releases only its own action, not whatever the other hand is holding.
+func _handle_touch(ev: InputEventScreenTouch) -> void:
+	var size := Vector2(get_viewport().get_visible_rect().size)
+	if ev.pressed:
+		var n := ev.position / size
+		for z: Dictionary in _touch_zones:
+			if (z["rect"] as Rect2).has_point(n):
+				_touch_held[ev.index] = z["action"]
+				Input.action_press(z["action"])
+				return
+	elif _touch_held.has(ev.index):
+		Input.action_release(_touch_held[ev.index])
+		_touch_held.erase(ev.index)
 
 
 func _input_failed(why: String) -> void:
@@ -270,6 +310,9 @@ func finish_level() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		_handle_touch(event)
+		return
 	if event.is_action_pressed("quit"):
 		get_tree().quit()
 	elif event.is_action_pressed("toggle_music"):

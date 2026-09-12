@@ -166,6 +166,23 @@ func _frames(n: int) -> void:
 		await get_tree().physics_frame
 
 
+## Drive an action the way a player does, so the input table is on the suite's
+## critical path. Calling player._use() directly - which this suite did until v0.9 -
+## exercises the method and never the binding, so a broken table passed every check.
+func _tap(action: String) -> void:
+	Input.action_press(action)
+	await get_tree().physics_frame
+	Input.action_release(action)
+	await get_tree().physics_frame
+
+
+func _hold(action: String, frames: int) -> void:
+	Input.action_press(action)
+	await _frames(frames)
+	Input.action_release(action)
+	await get_tree().physics_frame
+
+
 func _place(level: Level, cell: Vector2i, look_at_cell: Vector2i) -> void:
 	var player: CharacterBody3D = Game.player
 	player.global_position = level.to_world(cell.x, cell.y)
@@ -204,7 +221,7 @@ func _run_smoke() -> void:
 	var door: Door = level.door_at(locked_cell)
 	_check("locked door exists", door != null and door.locked)
 	await _place(level, Vector2i(17, 15), locked_cell)
-	player._use()
+	await _tap("use")
 	await _frames(2)
 	_check("locked door reports LOCKED", _last_message.begins_with("LOCKED"))
 	_check("door stays locked", door.locked and not door.is_open())
@@ -245,7 +262,7 @@ func _run_smoke() -> void:
 
 	# 3. keycard unlocks and opens the door, path becomes walkable
 	await _place(level, Vector2i(17, 15), locked_cell)
-	player._use()
+	await _tap("use")
 	await _frames(70)
 	_check("door unlocked", not door.locked)
 	_check("door opened", door.is_open())
@@ -274,7 +291,7 @@ func _run_smoke() -> void:
 		var ammo_before := Game.ammo
 		for i in 4:
 			player.look_at(Vector3(enemy.global_position.x, 0.0, enemy.global_position.z), Vector3.UP)
-			player._fire()
+			await _hold("fire", 2)
 			await _frames(22)  # > FIRE_COOLDOWN
 		_check("ammo consumed", Game.ammo < ammo_before)
 		_check("mutant dead", enemy.state == enemy.State.DEAD)
@@ -289,7 +306,7 @@ func _run_smoke() -> void:
 
 	# 5. exit panel finishes the level
 	await _place(level, Vector2i(28, 18), Vector2i(29, 18))
-	player._use()
+	await _tap("use")
 	await _frames(2)
 	_check("level finished at exit", Game.finished)
 
