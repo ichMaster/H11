@@ -4,7 +4,9 @@
  * renderer, so the mockup is produced the same way the game produces a frame.
  *   - 640x480, one render pixel per physical panel pixel, no upscale
  *   - column raycast, 1 cell = 2 m, wall face = one full texture (UV 0..1)
- *   - depth_shade.gdshader:  exp(-distance * 0.085)
+ *   - depth_shade.gdshader:  exp(-distance * FOG), FOG defaulting to the shipped
+ *     Level.FOG_DENSITY. Keep them equal: a mockup rendered at a different fog is
+ *     not comparable with a --drive frame, which is the only thing it is for.
  *   - Wolf3D trick: north/south faces * 0.72
  *   - billboard sprites, binary alpha, pixel_size 0.0078125 (256 px = 2 m)
  *   - HUD composited at its exact pixel sizes, never scaled
@@ -58,7 +60,11 @@
     const out = new Uint8ClampedArray(W * H * 4);
     const zbuf = new Float64Array(W);
     const lampDim = o.lampDim === undefined ? 1 : o.lampDim;
-    const FOG = o.fog === undefined ? 0.085 : o.fog;   // Level.FOG_DENSITY
+    // Must track Level.FOG_DENSITY in scripts/level.gd. It was 0.085 when the art
+    // was authored and is 0.025 now; leaving the old value here made every mockup
+    // darker at distance than the game it was being compared against.
+    const FOG = o.fog === undefined ? 0.025 : o.fog;
+    if (!o.quiet) console.error(`  frame: fog ${FOG}, ${W}x${H}`);
 
     const put = (x, y, r, g, b) => {
       const i = (y * W + x) * 4;
@@ -127,7 +133,7 @@
       }
     }
 
-    // ---- billboards (sprites face the player; pixel_size 0.015625 -> 2 m tall)
+    // ---- billboards (sprites face the player; pixel_size 0.0078125 -> 2 m tall)
     const sprites = (o.sprites || []).map(s => Object.assign({}, s,
       { dist: (px - s.x) * (px - s.x) + (py - s.y) * (py - s.y) }))
       .sort((a, b) => b.dist - a.dist);
