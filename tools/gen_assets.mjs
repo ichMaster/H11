@@ -78,7 +78,18 @@ const arg = (k, d) => { const i = argv.indexOf(k); return i < 0 ? d : argv[i + 1
 const outDir = resolve(HERE, arg('--out', join(HERE, '..', 'assets')));
 const only = arg('--only', null);
 const wantStats = argv.includes('--stats');
-const names = Object.keys(H11.SIZES).filter(n => !only || only.split(',').includes(n));
+const requested = only ? only.split(',').map(n => n.trim()).filter(Boolean) : null;
+const names = Object.keys(H11.SIZES).filter(n => !requested || requested.includes(n));
+if (requested) {
+  // A typo in --only used to match nothing, write nothing and exit 0, so an
+  // iteration loop looked successful while regenerating none of the art.
+  const unknown = requested.filter(n => !H11.SIZES[n]);
+  if (unknown.length) {
+    console.error(`! unknown asset name(s): ${unknown.join(', ')}`);
+    console.error(`  known: ${Object.keys(H11.SIZES).join(' ')}`);
+    process.exit(2);
+  }
+}
 if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
 
 let bad = 0;
@@ -88,7 +99,10 @@ for (const name of names) {
   if (g.w !== w || g.h !== h) { console.error(`! ${name}: ${g.w}x${g.h}, expected ${w}x${h}`); bad++; continue; }
   let semi = 0;
   for (let i = 3; i < g.d.length; i += 4) if (g.d[i] !== 0 && g.d[i] !== 255) semi++;
-  if (semi) { console.error(`! ${name}: ${semi} semi-transparent pixels (alpha_cut = 1 needs 0 or 255)`); bad++; }
+  // Skip the write, like the size-mismatch path above: an asset that failed its own
+  // alpha check used to be written anyway, overwriting committed art with output the
+  // generator had just declared invalid.
+  if (semi) { console.error(`! ${name}: ${semi} semi-transparent pixels (alpha_cut = 1 needs 0 or 255)`); bad++; continue; }
   writeFileSync(join(outDir, name + '.png'), encodePNG(w, h, g.d));
   if (wantStats) {
     const cols = new Set(); const lum = [];
