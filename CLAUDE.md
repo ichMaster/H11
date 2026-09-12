@@ -85,6 +85,36 @@ directions that were not adopted; the game must not load them, and they are
 excluded from the export. `tools/gen_assets_legacy.py` is the retired procedural
 generator — do not run it, it overwrites `assets/`.
 
+## The device renders on the GPU, but only because of one line on the device
+
+The PocketTerm is a Pi 5, which splits rendering from display: `card0` /
+`renderD128` are **v3d** (the 3D GPU), `card1` is **vc4** (display only, cannot
+render). Out of the box wlroots advertises `card1` to clients as the dmabuf main
+device, so every GL client - Godot, `eglinfo`, `glxinfo` alike - fails to create
+a screen on it and falls back **silently** to llvmpipe software rendering. The
+only visible symptom is the frame time.
+
+The fix lives in `~/.profile` on the device, next to the `sway` launch, and is
+therefore **not in this repository**:
+
+```sh
+export WLR_RENDER_DRM_DEVICE=/dev/dri/renderD128
+```
+
+Measured on the real device, three 15 s `--bench=15` runs each way:
+
+| | llvmpipe (software) | V3D 7.1.7.0 (GPU) |
+|---|---|---|
+| mean frame | 11.1 ms (90 fps) | 2.86 ms (350 fps) |
+| 1% low | 13.0 ms | 3.03 ms |
+| worst frame | 16.27 ms | 3.05 ms |
+| process CPU | ~110% | ~25% |
+
+To confirm which one is live: `ls -l /proc/$(pgrep -x h11.arm64)/fd | grep dri`
+must show `renderD128`. No fd there means software rendering is back - check
+that the `~/.profile` line survived, and that `wayland-info | grep "main device"`
+names `card0`/`renderD128` rather than `card1`.
+
 ## Working in this repo
 
 - Tuning lives in `const` blocks at the top of each script: enemy difficulty in [enemy.gd](scripts/enemy.gd) (`SPEED`, `SIGHT_RANGE`, `ATTACK_RANGE`, `ATTACK_COOLDOWN`, `HP_MAX`), movement/weapon in [player.gd](scripts/player.gd), door timing in [door.gd](scripts/door.gd), HUD layout constants in [hud.gd](scripts/hud.gd).
