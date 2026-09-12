@@ -2,6 +2,21 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Specification
+
+Read these before planning work; they are the project's contract with itself.
+
+- **[specification/VISION.md](specification/VISION.md)** — what H11 is, for whom, the principles, and
+  the non-goals. A request that violates a non-goal is a conversation, not a task.
+- **[specification/ARCHITECTURE.md](specification/ARCHITECTURE.md)** — components, the map language,
+  contracts, collision layers, the failure modes this project has actually been bitten by, the device,
+  and the acceptance gates.
+- **[specification/ROADMAP.md](specification/ROADMAP.md)** — eight versions, each phase with Goal,
+  Tasks, DoD and the checks that encode the DoD. Current state: **v0 shipped**, next is **v0.8**
+  (hardening [CODE_REVIEW.md](CODE_REVIEW.md)).
+- **[specification/SDLC.md](specification/SDLC.md)** — how a roadmap phase becomes shipped code: the
+  ten skills in `.claude/skills/`, the four acceptance gates, and the `codegen/` instrumentation.
+
 ## What this is
 
 H11 "Deck 1" — a Wolfenstein 3D–style demo level built in Godot 4.7 (GDScript, **GL Compatibility** renderer) targeting the Waveshare PocketTerm35 (Raspberry Pi 5, 640x480 screen). The game renders natively at 640x480 — one render pixel per panel pixel, no upscale — so Mac and device are pixel-identical. README.md is in Ukrainian; code and comments are in English.

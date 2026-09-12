@@ -235,3 +235,9 @@ __marimo__/
 # Connection details for the PocketTerm35 (ip/user/password/wifi). Read at
 # runtime by tools/deploy_to_term35.sh. MUST never be committed.
 .term35-connect.txt
+
+# --- SDLC instrumentation -----------------------------------------------------
+# One directory per tracked pipeline run. A log is evidence produced on one
+# machine; a fresh clone has none and should not carry someone else's.
+codegen/runs/
+codegen/var/
