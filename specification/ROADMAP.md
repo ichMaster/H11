@@ -182,6 +182,12 @@ versions add keys than after. **Depends on:** v0.8.
 - Validate the table at load like a deck (v1.1 generalises this): unknown action ids, unknown key
   names, and **binding conflicts** — the same key on two actions in a context that can receive both.
   A conflict is a failure, not a last-writer-wins surprise.
+- **Learn what the buttons actually emit.** The PocketTerm's keyboard advertises twelve `BTN_*`
+  gamepad codes alongside its letter codes, and there is no joystick device on the system. Capture
+  the real events from `/dev/input/event0` while each button is pressed, and record the result: if
+  X/A/B/Y/L/R/Select/Start emit `BTN_*`, they reach Godot as **joypad** input and the current
+  `KEYMAP` — which binds `KEY_*` only — means those buttons do nothing today. Either way the action
+  table binds both device kinds to the same action ids.
 - Check the scheme against the real 67-key PocketTerm keyboard rather than a full-size one: confirm
   every bound key physically exists and is reachable without a modifier the panel makes awkward.
   Record the layout in ARCHITECTURE so later versions bind into a documented scheme.
@@ -193,10 +199,27 @@ versions add keys than after. **Depends on:** v0.8.
 - Update v3.1's weapon switching to *declare* its actions in the table instead of appending to a
   dictionary.
 
+**The agreed button scheme.** Decided here rather than accumulated later; it follows the convention
+every handheld Doom port arrived at, so it is already in the player's fingers.
+
+| Button | Action | Why |
+|---|---|---|
+| D-pad | move forward / back, turn left / right | the base |
+| **L** / **R** | strafe left / right | shoulders for strafe is the handheld-FPS answer to having no second stick |
+| **B** | fire | under the thumb, the most frequent action |
+| **A** | use — doors, the exit panel | beside fire, the second most frequent |
+| **X** | run (held) | reachable without leaving fire |
+| **Y** | next weapon | idle until v3.1 declares it |
+| **Start** | pause / restart after death | convention |
+| **Select** | automap | idle until v5.1; shows the fps counter meanwhile |
+
+The keyboard scheme stays as it is — it is how the game is developed on the Mac, and the table binds
+both to the same action ids, so neither is a special case.
+
 **DoD:** every binding in the game comes from `data/input.json`; adding an action in a later version
 is a line in that file and no GDScript change; a conflicting or unknown binding fails at load with a
-named reason; the scheme is playable end to end on the PocketTerm's own keyboard, and fire and use
-also work by touch.
+named reason; **the button scheme above is playable end to end on the device**, whichever event kind
+the buttons emit; and fire and use also work by touch.
 
 **Tests:** `--smoke` drives the whole deck-1 objective chain through **action ids** rather than
 synthetic key events, so it exercises the table; fixtures for an unknown action, an unknown key name
