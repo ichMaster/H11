@@ -12,8 +12,8 @@ Read these before planning work; they are the project's contract with itself.
   contracts, collision layers, the failure modes this project has actually been bitten by, the device,
   and the acceptance gates.
 - **[specification/ROADMAP.md](specification/ROADMAP.md)** — eight versions, each phase with Goal,
-  Tasks, DoD and the checks that encode the DoD. Current state: **`0.8.0` released** (prototype hardened,
-  the review's High and Medium findings closed); next is **v0.9 — input as data**, then v1.
+  Tasks, DoD and the checks that encode the DoD. Current state: **`0.10.0` released** (music and the shotgun; prototype hardened,
+  the review's High and Medium findings closed). **v0.9 — input as data** is four sixths done and not yet released; two issues need hands on the device.
 - **[specification/SDLC.md](specification/SDLC.md)** — how a roadmap phase becomes shipped code: the
   ten skills in `.claude/skills/`, the four acceptance gates, and the `codegen/` instrumentation.
 
