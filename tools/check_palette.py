@@ -109,8 +109,11 @@ def check(name, size, allowed, want_stats):
         return ["missing file"], ""
     try:
         w, h, px = read_rgba(path)
-    except ValueError as e:
-        return [str(e)], ""
+    except (ValueError, zlib.error, struct.error, IndexError, OSError) as e:
+        # One unreadable file must fail one line, not the run: this is a gate whose
+        # whole job is to report on all 33, and a truncated PNG used to take the
+        # other 32 down with it.
+        return ["unreadable: %s: %s" % (type(e).__name__, e)], ""
 
     problems = []
     if [w, h] != list(size):
