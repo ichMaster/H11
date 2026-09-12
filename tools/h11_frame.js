@@ -61,9 +61,9 @@
     const zbuf = new Float64Array(W);
     const lampDim = o.lampDim === undefined ? 1 : o.lampDim;
     // Must track Level.FOG_DENSITY in scripts/level.gd. It was 0.085 when the art
-    // was authored and is 0.025 now; leaving the old value here made every mockup
+    // was authored and is 0.031 now; leaving the old value here made every mockup
     // darker at distance than the game it was being compared against.
-    const FOG = o.fog === undefined ? 0.025 : o.fog;
+    const FOG = o.fog === undefined ? 0.031 : o.fog;
     if (!o.quiet) console.error(`  frame: fog ${FOG}, ${W}x${H}`);
 
     const put = (x, y, r, g, b) => {

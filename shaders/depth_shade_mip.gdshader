@@ -15,7 +15,7 @@ uniform vec2 uv_scale = vec2(1.0, 1.0);
 // corners makes floor brightness track the distance to the level's corners rather than
 // to the ground under your feet - about 2.5x too dark beside the wall bases it meets,
 // with a gradient kink along the plane's diagonal.
-uniform float fog_density = 0.025;
+uniform float fog_density = 0.031;
 uniform vec3 fog_color : source_color = vec3(0.0, 0.0, 0.0);
 
 varying vec3 view_pos;

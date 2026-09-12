@@ -55,7 +55,7 @@ func _fire() -> void:
 		Game.say("NO AMMO")
 		Game.play("locked", -8.0)
 		return
-	Game.play("laser")
+	Game.play("shotgun")
 	fired.emit()
 	var hit := _ray(FIRE_RANGE, LAYER_WORLD | LAYER_ENEMY)
 	if not hit.is_empty() and hit.collider.has_method("hit"):

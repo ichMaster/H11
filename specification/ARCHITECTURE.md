@@ -230,6 +230,29 @@ release build — and the architecture now names it:
   `assets/alt/*`, `design_handoff*` and `h11_overgrowth_delta/*`, and the build is checked for
   leakage after export.
 
+## Audio
+
+Two kinds, and the difference matters more than it looks.
+
+**Generated** — `assets/sfx/*.wav`, eleven procedural sounds from `tools/gen_sounds.py`, stdlib only.
+The directory is **overwritten wholesale** on every regeneration, so nothing may be placed there by
+hand: it would survive until the next run and then vanish. The module seeds `random` once, so a
+generator that consumes from that stream shifts every sound defined after it — new generators take a
+local `random.Random(seed)` (see `shotgun()` and `ambient()`).
+
+**Supplied** — `assets/music/`, from v0.10. Audio no amount of stdlib Python will produce. It is a
+source, not an output, and it lives in its own directory precisely so the rule above stays simple:
+everything in `sfx/` is disposable, nothing in `music/` is.
+
+Both are Godot resources, so `export_filter = "all_resources"` ships them without an
+`include_filter` entry — unlike `levels/*.txt` and `data/*.json` (§Failure modes).
+
+The ambient bed and the music are separate players and coexist: the hum is the room, the track is the
+score. Music loops by a flag set in code rather than in the `.import` file, because `ambient.wav`
+already depends on such a flag and a reimport can drop it silently. `tools/check_audio.py` gates the
+generated set: every file decodes, nothing reaches full scale, and a looping file's seam is compared
+against its own p99.9 internal step.
+
 ## The device
 
 Waveshare PocketTerm35 — Raspberry Pi 5, Debian 13, Sway on Wayland, a 640×480 HDMI panel.

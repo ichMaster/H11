@@ -16,8 +16,13 @@ const MAX_AMMO := 99
 ## and cannot both be live (see ARCHITECTURE.md section Input).
 const INPUT_TABLE := "res://data/input.json"
 
+## Background music. Unlike everything in assets/sfx/, this is a SUPPLIED asset, not
+## output from tools/gen_sounds.py - see ARCHITECTURE.md section Audio.
+const MUSIC_TRACK := "res://assets/music/RustedMachinery.mp3"
+const MUSIC_DB := -12.0
+
 const SFX := {
-	"laser": "res://assets/sfx/laser.wav",
+	"shotgun": "res://assets/sfx/shotgun.wav",
 	"hit": "res://assets/sfx/hit.wav",
 	"explode": "res://assets/sfx/explode.wav",
 	"pickup": "res://assets/sfx/pickup.wav",
@@ -45,6 +50,8 @@ var _streams := {}
 var _players: Array[AudioStreamPlayer] = []
 var _next_player := 0
 var _ambient: AudioStreamPlayer
+var _music: AudioStreamPlayer
+var music_enabled: bool = true
 
 
 func _ready() -> void:
@@ -161,6 +168,18 @@ func _setup_audio() -> void:
 	_ambient.volume_db = -14.0
 	add_child(_ambient)
 
+	# Music sits under the ambient bed rather than replacing it: the hum is the room,
+	# the track is the score. Looping is set here rather than in the .import file so a
+	# reimport cannot silently drop it, the way ambient.wav depends on a flag that is
+	# easy to lose.
+	_music = AudioStreamPlayer.new()
+	var track: AudioStream = load(MUSIC_TRACK)
+	if track is AudioStreamMP3:
+		track.loop = true
+	_music.stream = track
+	_music.volume_db = MUSIC_DB
+	add_child(_music)
+
 
 func play(id: String, volume_db: float = 0.0) -> void:
 	if not _streams.has(id):
@@ -175,6 +194,21 @@ func play(id: String, volume_db: float = 0.0) -> void:
 func start_ambient() -> void:
 	if not _ambient.playing:
 		_ambient.play()
+	if music_enabled and not _music.playing:
+		_music.play()
+
+
+## Music is a supplied asset, not a generated one, and it is the only thing in the
+## game a player may want silenced - so it gets a key of its own. The state is not
+## persisted: there is no settings store until v2.4.
+func toggle_music() -> void:
+	music_enabled = not music_enabled
+	if music_enabled:
+		_music.play()
+		say("MUSIC ON")
+	else:
+		_music.stop()
+		say("MUSIC OFF")
 
 
 func say(text: String) -> void:
@@ -238,6 +272,8 @@ func finish_level() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("quit"):
 		get_tree().quit()
+	elif event.is_action_pressed("toggle_music"):
+		toggle_music()
 	elif event.is_action_pressed("restart") and (dead or finished):
 		reset()
 		get_tree().reload_current_scene()

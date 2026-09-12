@@ -34,46 +34,51 @@ def env(t, dur, attack=0.005, release=0.05):
     return 1.0
 
 
-def laser(dur=0.30):
-    """The weapon. Four layers, because a shot is felt as much as heard.
+def shotgun(dur=0.55):
+    """The weapon: a pump shotgun. Dull and long, not a crack.
 
-    crack  6 ms of noise, the snap of the discharge
-    body   430 Hz falling to 90, with a square edge for grit
-    sub    150 Hz falling to 45, the weight that lands in the chest
-    tail   noise through a low-pass that closes as it decays, the room
+    blast  noise through a low-pass that never opens above 700 Hz - the muffled
+           thump of a shell, with no bright transient to make it a zap
+    body   180 Hz falling to 60, the punch you feel in the room
+    sub    90 Hz falling to 35 over a long decay, the weight
+    tail   noise through a slowly closing filter, 400 ms of room
 
-    The layers run on phase accumulators rather than sin(2*pi*f(t)*t), which
-    smears phase as f changes and was what made the old sweep whistle.
+    Longer than the fire cooldown (0.32 s) on purpose: at sustained fire the tails
+    overlap in the six-voice pool, which is what a shotgun in a corridor sounds like.
 
-    Uses its own RNG: the module seeds `random` once, so consuming from that
-    stream here would shift every sound generated after this one.
+    Uses its own RNG: the module seeds `random` once, so consuming from that stream
+    here would shift every sound generated after this one.
     """
     rng = random.Random(11)
     n = int(SR * dur)
     out = []
     ph_body = ph_sub = 0.0
-    lp = 0.0  # state of the tail's closing low-pass
+    lp_blast = lp_tail = 0.0
     for i in range(n):
         t = i / SR
 
-        crack = rng.uniform(-1.0, 1.0) * math.exp(-t * 420.0) * 0.9
+        # The blast's filter opens briefly and shuts: that shape is what makes it
+        # read as muffled rather than as a snare.
+        cut_b = 700.0 * math.exp(-t * 30.0) + 70.0
+        k_b = 1.0 - math.exp(-2.0 * math.pi * cut_b / SR)
+        lp_blast += (rng.uniform(-1.0, 1.0) - lp_blast) * k_b
+        blast = lp_blast * 4.2 * math.exp(-t * 14.0)
 
-        f_body = 430.0 * math.pow(90.0 / 430.0, min(1.0, t / 0.12))
+        f_body = 180.0 * math.pow(60.0 / 180.0, min(1.0, t / 0.16))
         ph_body += 2.0 * math.pi * f_body / SR
-        body = (math.sin(ph_body) * 0.55 + (0.12 if math.sin(ph_body) > 0 else -0.12)) * math.exp(-t * 11.0)
+        body = math.sin(ph_body) * 0.7 * math.exp(-t * 7.0)
 
-        f_sub = 150.0 * math.pow(45.0 / 150.0, min(1.0, t / 0.18))
+        f_sub = 90.0 * math.pow(35.0 / 90.0, min(1.0, t / 0.30))
         ph_sub += 2.0 * math.pi * f_sub / SR
-        sub = math.sin(ph_sub) * 0.85 * math.exp(-t * 6.5)
+        sub = math.sin(ph_sub) * 0.9 * math.exp(-t * 3.6)
 
-        cutoff = 2600.0 * math.exp(-t * 9.0) + 120.0
-        k = 1.0 - math.exp(-2.0 * math.pi * cutoff / SR)
-        lp += (rng.uniform(-1.0, 1.0) - lp) * k
-        tail = lp * 0.5 * math.exp(-t * 8.0)
+        cut_t = 450.0 * math.exp(-t * 4.5) + 55.0
+        k_t = 1.0 - math.exp(-2.0 * math.pi * cut_t / SR)
+        lp_tail += (rng.uniform(-1.0, 1.0) - lp_tail) * k_t
+        tail = lp_tail * 2.1 * math.exp(-t * 3.8)
 
-        # Soft clip: loud without ever reaching the hard clamp in write().
-        s = math.tanh((crack + body + sub + tail) * 1.6) * 0.8
-        out.append(s * env(t, dur, attack=0.001, release=0.06))
+        s = math.tanh((blast + body + sub + tail) * 1.35) * 0.82
+        out.append(s * env(t, dur, attack=0.001, release=0.12))
     return out
 
 
@@ -192,7 +197,7 @@ def ambient(dur=6.0):
     the whole run. Each tone is now snapped to a whole number of cycles in `dur`, and
     the noise, which cannot be, is cross-faded from an overrun tail into the head.
 
-    Uses its own RNG so the module-seeded stream stays untouched (see laser()).
+    Uses its own RNG so the module-seeded stream stays untouched (see shotgun()).
     """
     rng = random.Random(17)
     n = int(SR * dur)
@@ -224,7 +229,7 @@ def ambient(dur=6.0):
 
 
 if __name__ == "__main__":
-    write("laser.wav", laser())
+    write("shotgun.wav", shotgun())
     write("hit.wav", hit())
     write("explode.wav", explode())
     write("pickup.wav", pickup())

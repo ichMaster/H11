@@ -52,6 +52,10 @@
     "next_weapon": {
       "display": "Next weapon",
       "hold": false
+    },
+    "toggle_music": {
+      "display": "Music on/off",
+      "hold": false
     }
   },
   "profiles": {
@@ -104,6 +108,9 @@
         ],
         "next_weapon": [
           "Tab"
+        ],
+        "toggle_music": [
+          "M"
         ]
       }
     },
@@ -148,6 +155,9 @@
         ],
         "quit": [
           "Escape"
+        ],
+        "toggle_music": [
+          "M"
         ]
       }
     }

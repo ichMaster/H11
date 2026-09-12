@@ -153,7 +153,7 @@ func _validate(path: String) -> bool:
 
 ## Shared depth-shaded material per texture. FOG_DENSITY is the single knob
 ## for how far you can see; sprites use the same value (see depth_shade()).
-const FOG_DENSITY := 0.025
+const FOG_DENSITY := 0.031
 const DEPTH_SHADER: Shader = preload("res://shaders/depth_shade.gdshader")
 ## Mipmapped variant, used only by the two level-wide planes below. At 640x480 a
 ## far-away floor texel is far smaller than a screen pixel, and nearest sampling
