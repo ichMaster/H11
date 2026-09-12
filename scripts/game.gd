@@ -11,22 +11,10 @@ signal player_died
 const MAX_HEALTH := 100
 const MAX_AMMO := 99
 
-## Keyboard layout. Physical keycodes, so it works with any keyboard language.
-## First list entry is the "main" key, the rest are alternatives.
-const KEYMAP := {
-	"move_forward": [KEY_W, KEY_UP],
-	"move_back": [KEY_S, KEY_DOWN],
-	"turn_left": [KEY_A, KEY_LEFT],
-	"turn_right": [KEY_D, KEY_RIGHT],
-	"strafe_left": [KEY_Q, KEY_Z],
-	"strafe_right": [KEY_E, KEY_X],
-	"fire": [KEY_SPACE, KEY_CTRL],
-	"use": [KEY_F, KEY_ENTER],
-	"run": [KEY_SHIFT],
-	"toggle_fps": [KEY_F3],
-	"restart": [KEY_R],
-	"quit": [KEY_ESCAPE],
-}
+## The control scheme lives in data, not here. Two profiles - the development
+## keyboard and the PocketTerm's own buttons - because they share physical keycodes
+## and cannot both be live (see ARCHITECTURE.md section Input).
+const INPUT_TABLE := "res://data/input.json"
 
 const SFX := {
 	"laser": "res://assets/sfx/laser.wav",
@@ -50,6 +38,8 @@ var finished: bool = false
 var dead: bool = false
 var player: Node3D = null
 var on_device: bool = false
+## Which profile _setup_input() applied. Read by the acceptance suite.
+var input_profile: String = ""
 
 var _streams := {}
 var _players: Array[AudioStreamPlayer] = []
@@ -59,11 +49,13 @@ var _ambient: AudioStreamPlayer
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_setup_input()
-	_setup_audio()
 	# Device profile: the PocketTerm build carries the custom "pocketterm" feature tag
 	# (see export_presets.cfg); any Linux ARM machine is treated the same way.
+	# Resolved BEFORE _setup_input(), which picks its profile from it - the other order
+	# hands the device the desktop scheme, silently, and only hands find it.
 	on_device = OS.has_feature("pocketterm") or (OS.get_name() == "Linux" and (OS.has_feature("arm64") or OS.has_feature("arm")))
+	_setup_input()
+	_setup_audio()
 	if on_device:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
@@ -82,13 +74,28 @@ func reset() -> void:
 
 
 func _setup_input() -> void:
-	for action in KEYMAP:
+	var text := FileAccess.get_file_as_string(INPUT_TABLE)
+	if text == "":
+		push_error("Input table not found: " + INPUT_TABLE)
+		return
+	var table: Variant = JSON.parse_string(text)
+	if typeof(table) != TYPE_DICTIONARY:
+		push_error("Input table is not a JSON object: " + INPUT_TABLE)
+		return
+	var name := "device" if on_device else "desktop"
+	var profile: Variant = table.get("profiles", {}).get(name, {}).get("bind", {})
+	if typeof(profile) != TYPE_DICTIONARY or profile.is_empty():
+		push_error("Input table has no '%s' profile" % name)
+		return
+	for action: String in profile:
 		if not InputMap.has_action(action):
 			InputMap.add_action(action)
-		for key in KEYMAP[action]:
+		for key_name: String in profile[action]:
+			var code := OS.find_keycode_from_string(key_name)
 			var ev := InputEventKey.new()
-			ev.physical_keycode = key
+			ev.physical_keycode = code
 			InputMap.action_add_event(action, ev)
+	input_profile = name
 
 
 func _setup_audio() -> void:

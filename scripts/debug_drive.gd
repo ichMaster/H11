@@ -209,6 +209,22 @@ func _run_smoke() -> void:
 	_check("locked door reports LOCKED", _last_message.begins_with("LOCKED"))
 	_check("door stays locked", door.locked and not door.is_open())
 
+	# 1a. contract: the action table built the InputMap it declares (H11-016). Without
+	# this the table could silently fail to load and every check below would still pass,
+	# because they drive the player's methods directly rather than its input.
+	var want := ["move_forward", "move_back", "turn_left", "turn_right", "strafe_left",
+		"strafe_right", "run", "fire", "use", "toggle_fps", "restart", "quit"]
+	var missing: Array[String] = []
+	var unbound: Array[String] = []
+	for a in want:
+		if not InputMap.has_action(a):
+			missing.append(a)
+		elif InputMap.action_get_events(a).is_empty():
+			unbound.append(a)
+	_check("input table built %d actions" % want.size(), missing.is_empty())
+	_check("every action has at least one binding", unbound.is_empty())
+	_check("profile matches the platform", Game.input_profile == ("device" if Game.on_device else "desktop"))
+
 	# 1b. every pickup wears its own sprite (H11-005: _ready stamped the default kind
 	# before setup assigned the real one, so ammo and keycards looked like medkits)
 	var wrong_sprite := 0

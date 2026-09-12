@@ -79,6 +79,19 @@ Twelve actions, bound at runtime. Until v0.9 they came from a `KEYMAP` dictionar
 `data/input.json`, and every input device binds to the same action ids so nothing downstream learns
 which device produced an action.
 
+### The table
+
+`data/input.json` has two parts, so a display name or a hold/tap rule can never disagree between
+profiles: **`actions`** defines each action once (`display`, `hold`), and **`profiles`** only binds
+keys to them. Key names are Godot keycode names resolved through `OS.find_keycode_from_string`, so
+the file reads as `"Space"` rather than `32`. `Game._setup_input()` picks the profile from
+`Game.on_device` — **resolved before `_setup_input()` runs**, because the other order hands the
+device the desktop scheme silently.
+
+Like `levels/*.txt`, the table is **not a Godot resource**, so it reaches an exported build only
+through `include_filter` in `export_presets.cfg` (§Failure modes). Adding an action is a line in
+`actions` plus a binding in each profile — no GDScript change.
+
 ### What the PocketTerm's buttons actually emit
 
 Captured from `/dev/input/event0` on the device (v0.9, H11-015). **Every button is an ordinary
