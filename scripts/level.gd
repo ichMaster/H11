@@ -160,6 +160,12 @@ const DEPTH_SHADER: Shader = preload("res://shaders/depth_shade.gdshader")
 ## on a 32x22 tiling makes it crawl while walking.
 const DEPTH_SHADER_MIP: Shader = preload("res://shaders/depth_shade_mip.gdshader")
 const MIPMAPPED := ["floor", "ceiling"]
+## Godot's BoxMesh lays its UVs out as a 3x2 per-face atlas, so each face samples one
+## sixth of the texture. The door art is authored as one full door face, so without
+## this correction a door shows a magnified crop and loses the seam, the second
+## porthole and the panel that marks it locked. The sampler is repeat_enable, which is
+## what makes (3, 2) show the whole texture on every face.
+const BOXMESH_ATLAS := ["door", "door_locked"]
 
 
 func material_for(tex_name: String) -> ShaderMaterial:
@@ -169,6 +175,8 @@ func material_for(tex_name: String) -> ShaderMaterial:
 	mat.shader = DEPTH_SHADER_MIP if tex_name in MIPMAPPED else DEPTH_SHADER
 	mat.set_shader_parameter("albedo_tex", load("res://assets/%s.png" % tex_name))
 	mat.set_shader_parameter("fog_density", FOG_DENSITY)
+	if tex_name in BOXMESH_ATLAS:
+		mat.set_shader_parameter("uv_scale", Vector2(3, 2))
 	_materials[tex_name] = mat
 	return mat
 
