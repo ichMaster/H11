@@ -184,18 +184,42 @@ def growl(dur=0.7):
 
 
 def ambient(dur=6.0):
-    """Low station hum with a slow, uneasy pulse. Looped in-game."""
-    out = []
+    """Low station hum with a slow, uneasy pulse. Looped in-game.
+
+    Seamless by construction, which it was not: 48.7 Hz completes 292.2 cycles in
+    six seconds, and the filtered noise starts at zero and ends wherever it ends, so
+    the loop point was a step discontinuity - an audible click every six seconds for
+    the whole run. Each tone is now snapped to a whole number of cycles in `dur`, and
+    the noise, which cannot be, is cross-faded from an overrun tail into the head.
+
+    Uses its own RNG so the module-seeded stream stays untouched (see laser()).
+    """
+    rng = random.Random(17)
     n = int(SR * dur)
+    fade = int(SR * 0.25)
+
+    def cycles(f):
+        """Nearest frequency completing a whole number of cycles in dur."""
+        return round(f * dur) / dur
+
+    f_low, f_beat, f_harm = cycles(48.0), cycles(48.7), cycles(96.0)
+    buf = []
     lp = 0.0
-    for i in range(n):
+    for i in range(n + fade):
         t = i / SR
         pulse = 0.6 + 0.4 * math.sin(2 * math.pi * t / dur)
-        noise = random.uniform(-1, 1)
-        lp += (noise - lp) * 0.01
-        s = math.sin(2 * math.pi * 48 * t) * 0.18 + math.sin(2 * math.pi * 48.7 * t) * 0.12 + lp * 1.2 * pulse
-        s += math.sin(2 * math.pi * 96 * t) * 0.05 * pulse
-        out.append(s)
+        lp += (rng.uniform(-1, 1) - lp) * 0.01
+        s = math.sin(2 * math.pi * f_low * t) * 0.18 + math.sin(2 * math.pi * f_beat * t) * 0.12
+        s += lp * 1.2 * pulse
+        s += math.sin(2 * math.pi * f_harm * t) * 0.05 * pulse
+        buf.append(s)
+
+    out = buf[:n]
+    # The tail continues past the loop point; fading it in over the head makes the
+    # last sample lead into the first one.
+    for i in range(fade):
+        w = i / fade
+        out[i] = out[i] * w + buf[n + i] * (1.0 - w)
     return out
 
 
