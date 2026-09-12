@@ -26,6 +26,11 @@ const WALL_TEX := {
 	"T": "wall_lab",     # glass containment box with a specimen
 	"C": "wall_pipes",   # burst coolant coupling, frost, biomass
 	"R": "wall_breach",  # hull breach, curled metal, rebar
+	# Overgrowth. N is the workhorse: its top edge dissolves, so it is what lets
+	# a run of creep start and end beside a plain panel without a hard seam.
+	"G": "wall_creep",      # panel taken over by the biomass
+	"N": "wall_creep_low",  # biomass up the bottom third, bare panel above
+	"Y": "wall_sac",        # the pod the Chorus came out of
 }
 const WALKABLE := ".PDKehak"
 const FACING_ROT := {"north": 0.0, "west": PI / 2.0, "south": PI, "east": -PI / 2.0}

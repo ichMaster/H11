@@ -1,5 +1,5 @@
 {
-  "note": "Working palette and size table for H11 // Deck 1 at 640x480. Every colour occurs in two or more files of the Freedoom reference set and is therefore a PLAYPAL entry. Use `sizes` to update the hardcoded size table in tools/check_palette.py, which still carries the 320x240 values. `alt_sizes` covers assets/alt/, which the game does not load.",
+  "note": "Working palette and size table for H11 // Deck 1 at 640x480. Every colour occurs in two or more files of the Freedoom reference set and is therefore a PLAYPAL entry. Use `sizes` to update the hardcoded size table in tools/check_palette.py, which still carries the 320x240 values. `alt_sizes` covers assets/alt/, which the game does not load. wall_creep / wall_creep_low / wall_sac are the overgrowth set; map characters G, N, Y.",
   "scale": 2,
   "render_target": [
     640,
@@ -508,6 +508,18 @@
     "hud_keycard": [
       32,
       32
+    ],
+    "wall_creep": [
+      256,
+      256
+    ],
+    "wall_creep_low": [
+      256,
+      256
+    ],
+    "wall_sac": [
+      256,
+      256
     ]
   },
   "alt_sizes": {

@@ -69,6 +69,14 @@
 
   const INK = 0x070707;
   const SEAM = 0x131313;
+  // One step under TOXIC[15], used for CRT scanlines. It IS a PLAYPAL entry —
+  // it occurs in the Freedoom reference set — but it shipped as an inline
+  // literal in wall_screen, which is the rule this constant exists to close.
+  // Naming it was not enough: 0x061000 is in neither playpal-base.lmp nor any
+  // of the 221 Freedoom reference files, so it was a gamut break, not a style
+  // one, and check_palette.py fails on it. The screen now sits one step up the
+  // ramp so its scanlines can be a real entry a step below it.
+  const SCANLINE = TOXIC[15];
 
   const PAL = { STEEL, RUST, CUT, BLOOD, RED, TOXIC, OLIVE, AMBER, GOLD, YELLOW, BLUE, FLESH, INK, SEAM };
 
@@ -515,13 +523,9 @@
     g.rect(x - 4, y - 4, w + 8, h + 8, STEEL[19]);
     g.recess(x - 4, y - 4, w + 8, h + 8, STEEL[10], STEEL[25]);
     g.rect(x, y, w, h, INK);
-    // The screen sits one step up the ramp from its scanlines, so both stay in
-    // PLAYPAL. It used to be TOXIC[15] with a literal 0x061000 underneath it -
-    // but TOXIC[15] is the darkest entry there is, so "one step darker" had to
-    // be invented, and an invented colour is exactly what rule 1 forbids.
     g.rect(x + 2, y + 2, w - 4, h - 4, TOXIC[14]);
     // scanlines: every second DEVICE row, one ramp step darker, never black
-    for (let j = (y + 2) * g.s; j < (y + h - 2) * g.s; j += 2) g.drect((x + 2) * g.s, j, (w - 4) * g.s, 1, TOXIC[15]);
+    for (let j = (y + 2) * g.s; j < (y + h - 2) * g.s; j += 2) g.drect((x + 2) * g.s, j, (w - 4) * g.s, 1, SCANLINE);
     g.t3(x + 6, y + 7, 'H11//CYCLE 7', TOXIC[5], 1);
     g.t3(x + 6, y + 15, 'STABLE', TOXIC[7], 1);
     g.t3(x + 6, y + 27, 'CONTAINMENT', RED[4], 1);
@@ -807,6 +811,249 @@
     g.blob(96, 44, 7, TOXIC[13], 831, 0.4);
     g.blob(92, 100, 6, TOXIC[12], 832, 0.4);
     g.speck(24, 24, 80, 80, RUST[17], 0.05, 840);
+    return g;
+  };
+
+  // ------------------------------------------------------------- overgrowth
+  // The H11 algorithm has finished with these three faces. wall_vent and
+  // wall_pipes say "something is growing here"; these say "it has won", so
+  // they share that material language and escalate it rather than restate it.
+  //
+  // The rule that keeps them reading as WALLS at 10 m: the membrane never
+  // covers the cornice, the skirting or the wrapping support column, and the
+  // mid seam is still legible as a change in the growth. Architecture first,
+  // organism over the top of it.
+
+  // top edge of a growth, as a function of design x. Built from sines with
+  // integer periods over 128, so the left edge meets the right edge exactly.
+  function edgeFn(base, amp, seed) {
+    const p = [1, 2, 3, 5].map(function (k, i) { return [k, hsh(k, i, seed) * 6.283, amp * [0.45, 0.28, 0.17, 0.10][i]]; });
+    return function (x) {
+      let y = base;
+      for (const [k, ph, a] of p) y += Math.sin(6.283 * k * x / 128 + ph) * a;
+      return y;
+    };
+  }
+
+  // membrane sheet below a dissolving top edge, rasterised in device pixels so
+  // the edge breaks up one real pixel at a time
+  function membrane(g, topFn, seed, cols) {
+    const S2 = g.s;
+    for (let dx = 0; dx < g.w; dx++) {
+      const top = topFn(dx / S2) * S2;
+      for (let dy = Math.floor(top) - 10; dy < g.h; dy++) {
+        if (dy < 0) continue;
+        const over = dy - top;
+        let c;
+        if (over < 0) {
+          // the dissolve: ordered dither thinning upward, never a hard line
+          const lvl = Math.max(0, 14 + over * 1.4);
+          if (BAYER[((dy % 4) + 4) % 4][((dx % 4) + 4) % 4] >= lvl) continue;
+          c = cols[3];
+        } else if (over < 3) c = cols[2];
+        else {
+          // the bulk is a three-way ordered dither: two adjacent TOXIC steps
+          // with OLIVE cut in, because saturated green at full coverage reads
+          // as a lawn rather than as something grown over metal
+          const bv = BAYER[((dy % 4) + 4) % 4][((dx % 4) + 4) % 4];
+          c = bv < 5 ? cols[0] : bv < 11 ? cols[1] : cols[3];
+        }
+        g.dpx(dx, dy, c);
+      }
+    }
+  }
+
+  // the shared organism: masses, sheeting over the seams, veins, nodules
+  function growth(g, o) {
+    const seed = o.seed;
+    // tonal masses — big, few, so the texture does not read as noise at range
+    for (let i = 0; i < o.masses; i++) {
+      const x = Math.round(hsh(i, 1, seed) * 128);
+      const y = o.y0 + Math.round(hsh(i, 2, seed) * (o.y1 - o.y0));
+      const r = 10 + Math.round(hsh(i, 3, seed) * 14);
+      g.blob(x, y, r, TOXIC[i % 2 ? 14 : 12], seed + i, 0.6);
+      g.blob(x - 2, y - 2, r * 0.55, TOXIC[i % 3 ? 11 : 13], seed + i + 60, 0.6);
+    }
+    // sheeting stretched across the panel seams — the "grown over" read
+    for (const [sy, n] of o.sheets) {
+      for (let i = 0; i < n; i++) {
+        const x0 = Math.round(i * 128 / n) - 4, w = Math.round(128 / n) + 8;
+        const sag = 4 + hsh(i, 4, seed) * 5;
+        capsule(g, x0, sy, x0 + w / 2, sy + sag, 3, 2.4, function () { return TOXIC[12]; });
+        capsule(g, x0 + w / 2, sy + sag, x0 + w, sy, 2.4, 3, function () { return TOXIC[13]; });
+        capsule(g, x0, sy - 1, x0 + w / 2, sy + sag - 1, 1.2, 1, function () { return TOXIC[10]; });
+      }
+    }
+    // tendrils, branching
+    for (const [x0, y0, x1, y1, x2, y2] of o.tendrils) {
+      capsule(g, x0, y0, x1, y1, 2.6, 1.5, function (t) { return t < 0.5 ? TOXIC[12] : TOXIC[14]; });
+      capsule(g, x1, y1, x2, y2, 1.5, 0.7, function (t) { return t < 0.5 ? TOXIC[13] : TOXIC[15]; });
+      capsule(g, x0, y0 - 1, x1, y1 - 1, 0.8, 0.5, function () { return TOXIC[11]; });
+      g.blob(x2, y2, 3, TOXIC[11], seed + x0, 0.55);
+    }
+    // veins carried in the membrane
+    for (let i = 0; i < o.veins; i++) {
+      const x = Math.round(hsh(i, 5, seed) * 128), y = o.y0 + Math.round(hsh(i, 6, seed) * (o.y1 - o.y0));
+      const dx = -14 + hsh(i, 7, seed) * 28, dy = 10 + hsh(i, 8, seed) * 22;
+      capsule(g, x, y, x + dx, y + dy, 1.2, 0.6, function () { return BLOOD[16]; });
+      capsule(g, x + dx * 0.5, y + dy * 0.5, x + dx * 1.3, y + dy * 1.2, 0.9, 0.5, function () { return BLOOD[17]; });
+    }
+    // nodules — the brightest pixels present, and deliberately few
+    for (const [x, y, r] of o.nodules) {
+      g.ell(x, y, r + 1, r + 1, TOXIC[15]);
+      g.ell(x, y, r, r, TOXIC[10]);
+      g.ell(x - 1, y - 1, Math.max(1, r - 2), Math.max(1, r - 2), TOXIC[5]);
+      g.px(x - 1, y - 1, TOXIC[2]);
+    }
+    // grime where the organism meets old metal
+    for (const [x, y, r] of o.grime) {
+      g.blob(x, y, r, OLIVE[8], seed + x + 300, 0.4);
+      g.blob(x, y, r * 0.5, OLIVE[11], seed + x + 400, 0.45);
+    }
+  }
+
+  A.wall_creep = function () {
+    const g = new I(128, 128);
+    substrate(g, { rust: 0.5, cable: false, seed: 71 });
+    // the membrane takes the whole face but stops clear of the join zones,
+    // so the cornice, the skirting and the support column still frame it
+    membrane(g, edgeFn(52, 10, 71), 71, [TOXIC[13], TOXIC[14], TOXIC[12], OLIVE[13]]);
+    for (let dx = 0; dx < g.w; dx++) for (let dy = 118 * g.s; dy < g.h; dy++) {
+      if (BAYER[((dy % 4) + 4) % 4][((dx % 4) + 4) % 4] < 9) g.dpx(dx, dy, TOXIC[14]);
+    }
+    growth(g, {
+      seed: 71, masses: 8, y0: 56, y1: 114, veins: 7,
+      sheets: [[59, 4], [96, 3]],
+      tendrils: [[18, 116, 22, 82, 14, 46], [46, 118, 52, 88, 44, 58],
+      [82, 116, 76, 86, 84, 52], [110, 118, 106, 92, 114, 64]],
+      nodules: [[30, 72, 4], [92, 66, 3], [58, 100, 4]],
+      grime: [[6, 62, 7], [122, 64, 7]]
+    });
+    // the mid seam survives as a change in the growth, not as a line
+    for (let dx = 0; dx < g.w; dx++) {
+      if (hsh(dx, 9, 71) < 0.7) { g.dpx(dx, 60 * g.s, INK); g.dpx(dx, 60 * g.s + 1, INK); }
+      if (hsh(dx, 10, 71) < 0.45) g.dpx(dx, 60 * g.s - 1, TOXIC[11]);
+      if (hsh(dx, 11, 71) < 0.35) g.dpx(dx, 68 * g.s, TOXIC[15]);
+    }
+    // panel showing through in two places, so the wall is still under there
+    // The panel is not exposed as holes — round gaps read as portholes. It is
+    // exposed where the plate ribs resisted the growth: broken horizontal
+    // strips on the substrate's own rib lines. Structure, not damage.
+    for (const [ry, runs] of [[68, [[6, 26], [44, 22], [82, 18], [112, 14]]],
+    [96, [[14, 20], [50, 16], [90, 24]]]]) {
+      for (const [rx, rw] of runs) {
+        g.rect(rx, ry, rw, 7, STEEL[17]);
+        g.dith(rx, ry, rw, 7, STEEL[17], STEEL[18], 6);
+        g.hline(rx, ry, rw, STEEL[10]);
+        g.hline(rx, ry + 6, rw, STEEL[24]);
+        for (let k = 0; k < rw; k += 2) {
+          if (hsh(rx + k, ry, 610) < 0.55) g.px(rx + k, ry - 1, TOXIC[13]);
+          if (hsh(rx + k, ry, 611) < 0.55) g.px(rx + k, ry + 7, TOXIC[14]);
+        }
+        g.blob(rx, ry + 3, 4, TOXIC[13], 620 + rx, 0.6);
+        g.blob(rx + rw, ry + 3, 4, TOXIC[12], 640 + rx, 0.6);
+      }
+    }
+    return g;
+  };
+
+  A.wall_creep_low = function () {
+    const g = new I(128, 128);
+    substrate(g, { rust: 0.9, cableX: 104, seed: 79 });
+    // climbing the bottom third. The top edge is the whole point of this
+    // texture: it has to dissolve, so it can butt against a plain wall_panel.
+    membrane(g, edgeFn(84, 11, 79), 79, [TOXIC[13], TOXIC[14], TOXIC[12], OLIVE[13]]);
+    growth(g, {
+      seed: 79, masses: 6, y0: 92, y1: 122, veins: 5,
+      sheets: [[110, 3]],
+      tendrils: [[22, 120, 26, 92, 20, 62], [58, 122, 62, 96, 56, 68],
+      [96, 120, 92, 98, 100, 74]],
+      nodules: [[36, 106, 3], [84, 114, 3]],
+      grime: [[10, 96, 8], [118, 100, 8], [64, 90, 7]]
+    });
+    // spores thrown above the line — what makes the transition read as growth
+    // rather than as a fill level
+    for (let i = 0; i < 16; i++) {
+      const x = Math.round(hsh(i, 1, 790) * 128);
+      const y = 50 + Math.round(hsh(i, 2, 790) * 34);
+      const r = 1 + Math.floor(hsh(i, 3, 790) * 3);
+      g.blob(x, y, r, TOXIC[13], 790 + i, 0.5);
+      if (r > 2) g.blob(x, y, 1, TOXIC[11], 820 + i, 0.6);
+    }
+    return g;
+  };
+
+  A.wall_sac = function () {
+    const g = new I(128, 128);
+    substrate(g, { rust: 0.7, cable: false, seed: 83 });
+    membrane(g, edgeFn(96, 8, 83), 83, [TOXIC[13], TOXIC[14], TOXIC[12], OLIVE[13]]);
+    growth(g, {
+      seed: 83, masses: 5, y0: 96, y1: 120, veins: 4,
+      sheets: [[112, 3]],
+      tendrils: [[16, 118, 20, 90, 12, 56], [112, 118, 108, 92, 116, 60]],
+      nodules: [[20, 106, 3]],
+      grime: [[8, 100, 8], [120, 104, 8]]
+    });
+    // anchor roots spreading up the panel from the pod
+    for (let i = 0; i < 9; i++) {
+      const a = -2.9 + i * 0.34;
+      const x1 = Math.round(64 + Math.cos(a) * 46), y1 = Math.round(70 + Math.sin(a) * 40);
+      capsule(g, 64 + Math.cos(a) * 26, 70 + Math.sin(a) * 24, x1, y1, 3.4, 1.2,
+        function (t) { return t < 0.5 ? TOXIC[11] : TOXIC[13]; });
+      g.blob(x1, y1, 4, TOXIC[12], 500 + i, 0.5);
+      g.blob(x1, y1, 2, TOXIC[10], 520 + i, 0.55);
+    }
+    // the pod
+    g.ell(64, 68, 35, 41, INK);
+    g.ell(64, 68, 34, 40, TOXIC[15]);
+    g.ell(64, 68, 33, 39, TOXIC[14]);
+    g.blob(62, 64, 29, TOXIC[13], 600, 0.72);
+    g.blob(59, 58, 22, TOXIC[12], 601, 0.72);
+    g.blob(56, 52, 13, TOXIC[11], 602, 0.72);
+    g.blob(54, 48, 7, TOXIC[10], 603, 0.74);
+    // ribbing — few, dark, irregular, so it does not read as a melon
+    for (const [y, off] of [[42, -3], [56, 2], [72, -2], [88, 3], [100, -1]]) {
+      const t = (y - 68) / 41;
+      const hw = 33 * Math.sqrt(Math.max(0, 1 - t * t)) - 2;
+      if (hw < 4) continue;
+      capsule(g, 64 - hw + off, y, 64 + hw + off, y + 2, 1.8, 1.8, function () { return TOXIC[15]; });
+      capsule(g, 64 - hw + off, y - 1, 64 + hw + off, y + 1, 0.8, 0.8, function () { return TOXIC[12]; });
+    }
+    // what is curled up inside, seen through the skin: a carapace not yet
+    // finished, with the first of the teeth already in it
+    g.blob(64, 74, 22, RUST[18], 540, 0.66);
+    g.blob(62, 71, 18, RUST[16], 541, 0.68);
+    g.blob(59, 66, 11, RUST[13], 542, 0.7);
+    for (let i = 0; i < 9; i++) { g.rect(48 + i * 4, 78, 2, 4, GOLD[4]); g.px(48 + i * 4, 78, GOLD[3]); }
+    g.ell(64, 68, 20, 4, INK);
+    for (const [ex, ey] of [[54, 66], [62, 65], [70, 66], [58, 69], [74, 68]]) {
+      g.ell(ex, ey, 2, 2, 0x170F07); g.px(ex, ey, GOLD[4]);
+    }
+    g.blob(64, 92, 13, BLOOD[17], 543, 0.55);
+    g.blob(64, 76, 19, TOXIC[14], 544, 0.3);
+    // the split it came out of — torn lips, wet inside, running down the wall
+    g.ell(64, 38, 13, 7, TOXIC[15]);
+    g.ell(64, 38, 11, 5, INK);
+    g.ell(64, 38, 8, 3, BLOOD[17]);
+    g.ell(62, 37, 4, 2, BLOOD[16]);
+    for (let i = 0; i < 9; i++) {
+      const a = i / 9 * 6.283;
+      const ox = Math.cos(a) * 12, oy = Math.sin(a) * 6;
+      capsule(g, 64 + ox, 38 + oy, 64 + ox * 1.6, 38 + oy * 1.9, 2.2, 0.8,
+        function (t) { return t < 0.5 ? TOXIC[11] : TOXIC[13]; });
+    }
+    // it ran down the outside of the pod and onto the panel
+    for (const [x, y0, len] of [[60, 44, 22], [69, 45, 14]]) {
+      capsule(g, x, y0, x - 1, y0 + len, 1.6, 0.7, function () { return BLOOD[17]; });
+      g.blob(x - 1, y0 + len, 2, BLOOD[16], 560 + x, 0.5);
+    }
+    capsule(g, 64, 108, 62, 122, 2, 0.9, function () { return BLOOD[17]; });
+    g.blob(62, 123, 4, BLOOD[16], 566, 0.45);
+    // one nodule on the pod is the brightest thing in the texture
+    g.ell(84, 90, 5, 5, TOXIC[15]);
+    g.ell(84, 90, 4, 4, TOXIC[10]);
+    g.ell(83, 89, 2, 2, TOXIC[5]);
+    g.px(83, 89, TOXIC[2]);
     return g;
   };
 
@@ -1544,6 +1791,7 @@
     wall_panel: [128, 128], wall_vent: [128, 128], wall_light: [128, 128], wall_screen: [128, 128],
     wall_hazard: [128, 128], wall_h11: [128, 128], wall_blood: [128, 128], wall_exit: [128, 128],
     wall_lab: [128, 128], wall_pipes: [128, 128], wall_breach: [128, 128],
+    wall_creep: [128, 128], wall_creep_low: [128, 128], wall_sac: [128, 128],
     door: [128, 128], door_locked: [128, 128], floor: [128, 128], ceiling: [128, 128],
     mutant_0: [128, 128], mutant_1: [128, 128], mutant_2: [128, 128], mutant_3: [128, 128],
     mutant_attack: [128, 128], mutant_die: [128, 128], mutant_dead: [128, 128],
