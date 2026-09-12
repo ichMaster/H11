@@ -216,3 +216,17 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- Godot 4 -----------------------------------------------------------------
+# Editor import cache and generated metadata. Regenerated on first project open.
+.godot/
+# Godot's Android build template, if one is ever installed.
+/android/
+# Exported binaries land in build/h11.arm64 (build/ is already ignored above).
+# export_presets.cfg is tracked on purpose: it defines the PocketTerm preset and
+# holds no credentials. Keep it that way - Godot writes keystore passwords there
+# for signed Android/iOS exports.
+# Asset .import sidecars and script .uid files ARE tracked; do not ignore them.
+
+# --- macOS -------------------------------------------------------------------
+.DS_Store

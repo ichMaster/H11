@@ -1,0 +1,34 @@
+# H11 - Deck 1 (demo level)
+# Legend:
+#   #  steel wall panel        V  wall with vent         L  red emergency light (flickers)
+#   S  wall with screen        H  hazard-striped wall    X  exit panel (press F / Enter to finish)
+#   B  blood-splattered wall   1  wall with H11 stencil
+#   D  sliding door            K  locked door (needs keycard)
+#   .  floor                   P  player start (see facing= below)
+#   e  mutant                  h  medkit    a  ammo cell    k  keycard
+# Lines starting with # are comments. The map block begins after the 'map:' line
+# and every row must have the same length.
+facing=east
+map:
+################################
+#......#..........L............#
+#..P...D....1.....#....e...B...#
+#......#....e.....#............#
+#......#..........D....h.......#
+#1#D####..........#............#
+#......#..........S#####D#######
+#..a...#..........#.......1....#
+#......#####D#####L..e.........#
+#......#..........#............#
+###D####.....B....V......k.....#
+#......#..........#..B.........#
+#..e...D.....a....S............#
+#......#..........##H#####H#####
+#......#..........#............#
+###B####..........K...e........#
+#......#..........#............#
+#..h...D..........#.....a......#
+#......#..........L..........X##
+#......#....e.....#............#
+#......#..........#......e.....#
+####1############1######1#######
