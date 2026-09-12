@@ -1,8 +1,8 @@
 0. prototype
-1. project structure and redesign sprites to make them adopted for GPU
+1. review project structure, apply code reivew changes, adopt for keys on Term35 (X, A, B, Y, L, R, Select ,Start) and redesign sprites to make them adopted for GPU
 2. more levels with differenct design and more enemies
 3. more weapons and effects of shooting
-4. finding new weapons and amunition (the same for all weapons)
+4. finding new weapons, amunition (the same for all weapons)
 5. levels map mode and voice guidence of a Navigator
 6. walking efect
 7. blinking lights, smoke and more dinamic on objects
