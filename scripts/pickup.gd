@@ -13,8 +13,14 @@ var kind := "medkit"
 var _time := randf() * TAU
 
 
+## Called by the level builder after add_child, which means _ready has already run and
+## already stamped the sprite from the default kind. Apply the texture here too, the
+## way door.gd applies its material in setup() - otherwise every ammo cell and keycard
+## on the floor wears the medkit sprite while behaving correctly.
 func setup(p_kind: String) -> void:
 	kind = p_kind
+	if sprite != null:
+		sprite.texture = TEXTURES[kind]
 
 
 func _ready() -> void:
