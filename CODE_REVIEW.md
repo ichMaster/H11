@@ -13,6 +13,11 @@
 
 Recommendations are ordered by severity; within a severity, by file. Fix the High section first — every entry there is visible to a player in normal play.
 
+> **Status (v0.8, released as 0.8.0):** every **High** and **Medium** finding below is
+> fixed — see [specification/implementation/v0.8-execution-report.md](specification/implementation/v0.8-execution-report.md)
+> for the commit per finding. The **Low** findings remain open and are re-filed against the
+> version that next touches their file.
+
 ## High
 
 Every entry here is player-visible in normal play.

@@ -1,0 +1,24 @@
+Version 0.8.0 (2026-09-12)
+---------------------------
+- First tagged release. Prototype 0 shipped unversioned; this is the hardening pass
+  over it and the point from which the roadmap is released per phase.
+- Doors show their whole texture: BoxMesh uses a 3x2 per-face UV atlas, so every door
+  had been showing a magnified sixth - never the RED CLEARANCE block that marks one
+  locked.
+- Killed mutants are depth-shaded instead of staying flash-red forever.
+- Ammo cells and keycards wear their own sprites; they had all rendered as medkits.
+- Floor and ceiling fog is evaluated per fragment, not at the four corners of the deck.
+- ambient.wav loops without a click: seam 3380 -> 131 against a typical step of ~495.
+- Decks are validated at load with a release-safe check, not a stripped assert.
+- --smoke exits 1 on a structural failure instead of hanging, and gained two
+  assertions (18 checks, was 16).
+- New acceptance gate tools/check_audio.py: decode, clipping, loop-seam continuity.
+- Deploy copies before it kills and swaps atomically; a failed copy leaves the device
+  running its previous build.
+- The desktop scale survives a crash: persisted to a state file, self-healed on the
+  next launch.
+- The asset generator refuses to write art that failed its own alpha check, and fails
+  loudly on an unknown --only name.
+- Mockups render at the fog the game actually uses.
+
+Measured on the device: 2.97 ms mean frame, 3.33 ms worst, against a 16.67 ms budget.

@@ -159,7 +159,7 @@ H11-{first} ({gate})
 **Acceptance criteria:**
 - [ ] {functional criterion}
 - [ ] **Contract test:** {seam pinned} — *(only if a seam changes)*
-- [ ] **Unit test:** {pure logic} with the **LLM mocked by default** (live calls opt-in)
+- [ ] **Gate:** {which of --import / --smoke / check_palette.py / --drive / --bench proves it}
 - [ ] {ties to the phase DoD}
 
 ---
