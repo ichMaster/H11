@@ -1,11 +1,11 @@
 # Roadmap — H11
 
-Eight versions, built in order: **v0** the prototype that proved the loop on the device → **v1**
-foundation (structure, GPU-native assets, the data seams everything later plugs into) → **v2** the
-station (decks and creature lines) → **v3** arsenal (weapons, effects, ammunition) → **v4** presence
-(movement feel, environment dynamics, a sound field) → **v5** the Navigator (automap and voice) →
-**v6** server and multiple players → **v7** Hypothesis 11 (agents, and an algorithm that rewrites the
-station while you are in it).
+Eight versions, built in order: **v0** the prototype that proved the loop on the device, hardened and
+given a control scheme worth building on → **v1** foundation (structure, GPU-native assets, the data
+seams everything later plugs into) → **v2** the station (decks and creature lines) → **v3** arsenal
+(weapons, effects, ammunition) → **v4** presence (movement feel, environment dynamics, a sound field)
+→ **v5** the Navigator (automap and voice) → **v6** server and multiple players → **v7** Hypothesis 11
+(agents, and an algorithm that rewrites the station while you are in it).
 
 Versions are numbered from 0; phases inside a version are `vA.B` (A = version, B = phase), e.g.
 `v2.3`. Each phase lists a **Goal**, a short description, **Tasks**, a **Definition of Done**, and the
@@ -14,8 +14,8 @@ Versions are numbered from 0; phases inside a version are `vA.B` (A = version, B
 
 **Versioning (`A.B.C`).** `A` = roadmap version, `B` = phase within it (`v2.3` → `2.3.0`), `C` = a
 post-release fix on that phase. Releases are cut per phase. Never bump the version without explicit
-confirmation. v0 shipped before this roadmap existed and is documented retrospectively; the first
-tagged release is **`0.8.0`**.
+confirmation. v0.1–v0.7 shipped before this roadmap existed and are documented retrospectively; the
+first tagged release is **`0.8.0`**, cut 2026-09-12.
 
 **The two axes.** *The world* grows one deck → many decks → many creature lines → a station that
 edits itself. *The shell* grows one local process → a process with a map and a voice → a server with
@@ -23,8 +23,9 @@ clients. They are bound by the builders in `scripts/level.gd` and `tools/`, whic
 axis they are serving. Complexity is added by version, never all at once.
 
 **Source of the plan.** The version list is `specification/TODO.txt` ordered by dependency; each
-version names the TODO items it discharges. v0.8 is the hardening pass over
-[CODE_REVIEW.md](../CODE_REVIEW.md).
+version names the TODO items it discharges. Two phases come from elsewhere: **v0.8** is the hardening
+pass over [CODE_REVIEW.md](../CODE_REVIEW.md), and **v0.9** closes a gap the TODO never named — the
+control scheme, which every version from v2 onward would otherwise extend by accident.
 
 ---
 
@@ -34,9 +35,10 @@ version names the TODO items it discharges. v0.8 is the hardening pass over
 
 The proof that the whole loop closes on real hardware: an ASCII map becomes geometry, a player
 clears a deck, and it runs on a 3.5″ panel on the GPU inside the frame budget. Everything here is
-already in `main`; the phases below are written retrospectively so later versions have something to
-depend on, and because two of them (v0.6, v0.7) are the reason the budget exists at all. **Depends
-on:** nothing.
+already in `main`; v0.1–v0.7 are written retrospectively so later versions have something to depend
+on, and because two of them (v0.6, v0.7) are the reason the budget exists at all. The last two phases
+are not retrospective: **v0.8** clears the review of the prototype and **v0.9** turns the control
+scheme into data before six versions start appending keys to it. **Depends on:** nothing.
 
 ### v0.1 — The engine loop (shipped)
 
@@ -119,7 +121,7 @@ perimeter black since the initial commit.
 
 **DoD:** `renderD128` appears in the running game's open fds; `--bench` reports ≥5× headroom.
 
-### v0.8 — Prototype-0 hardening
+### v0.8 — Prototype-0 hardening (released `0.8.0`)
 
 **Goal:** clear the review before building on top of it.
 
@@ -156,6 +158,53 @@ returning to the depth-shade value; `check_palette.py` gains a corrupt-file case
 `--smoke` assertion fails (rather than hangs) when the deck's pinned constants do not match.
 
 **Release:** `0.8.0`.
+
+
+### v0.9 — Input as data
+
+**Goal:** the control scheme is a file, decided once, instead of a dictionary that every later
+version quietly appends to.
+
+`KEYMAP` in `game.gd` is twelve actions on physical keycodes — right in that it survives a keyboard
+language change, wrong in that it is source. Changing a binding means editing GDScript and
+re-exporting, and nothing in the game can change one at all. That is tolerable for a prototype with
+twelve actions and untenable from here: v2.1 adds a map key, v3.1 weapon switching, v5.1 the
+automap, v6 a chat. Each would append to the same dictionary, and by v5 the scheme would be twenty
+bindings nobody ever designed. The device also has inputs the game has never touched — a 67-key
+keyboard whose layout was never checked against the bindings, and a Goodix capacitive touch layer.
+
+This is the last phase of the prototype for the same reason v0.8 was: it is cheaper to do before six
+versions add keys than after. **Depends on:** v0.8.
+
+**Tasks:**
+- `data/input.json`: one entry per action — id, the physical keycodes bound to it, a display name for
+  the eventual rebinding UI, and whether it repeats. `Game._setup_input()` reads it; `KEYMAP` goes.
+- Validate the table at load like a deck (v1.1 generalises this): unknown action ids, unknown key
+  names, and **binding conflicts** — the same key on two actions in a context that can receive both.
+  A conflict is a failure, not a last-writer-wins surprise.
+- Check the scheme against the real 67-key PocketTerm keyboard rather than a full-size one: confirm
+  every bound key physically exists and is reachable without a modifier the panel makes awkward.
+  Record the layout in ARCHITECTURE so later versions bind into a documented scheme.
+- Touch as a second input device: screen zones for fire and use, mapped to the same action ids so
+  nothing downstream knows which device produced an action. Off unless the device reports a
+  touchscreen.
+- A held-action and a tap-action distinction in the table (movement is held, use is a tap), so later
+  versions stop hand-rolling `is_action_pressed` vs `just_pressed` per feature.
+- Update v3.1's weapon switching to *declare* its actions in the table instead of appending to a
+  dictionary.
+
+**DoD:** every binding in the game comes from `data/input.json`; adding an action in a later version
+is a line in that file and no GDScript change; a conflicting or unknown binding fails at load with a
+named reason; the scheme is playable end to end on the PocketTerm's own keyboard, and fire and use
+also work by touch.
+
+**Tests:** `--smoke` drives the whole deck-1 objective chain through **action ids** rather than
+synthetic key events, so it exercises the table; fixtures for an unknown action, an unknown key name
+and a duplicate binding each fail at load with their own message; a device pass confirming every
+bound key exists on the 67-key layout.
+
+**Release:** `0.9.0` closes the prototype. Everything after it is v1 and the real project.
+
 
 ---
 
@@ -354,8 +403,8 @@ a visible and audible consequence, and puts new weapons in the world to find. **
 **Tasks:**
 - `data/weapons.json`: damage, cooldown, range, spread, projectile or hitscan, ammo type and cost,
   sprite set, sound set, HUD placement.
-- `player.gd` holds a weapon set and a selected index; number keys and a cycle key switch, both added
-  to `KEYMAP`.
+- `player.gd` holds a weapon set and a selected index; the number keys and the cycle key are
+  **declared in `data/input.json`** (v0.9), never appended to a dictionary in code.
 - The HUD draws the selected weapon and its ammo from the table.
 - Ammunition is shared across weapons per the TODO — one ammo pool, per-weapon cost.
 
