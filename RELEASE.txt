@@ -20,6 +20,31 @@ line in data/input.json - but two issues still need hands on the device (touch z
 and confirming the 67-key layout). Released out of roadmap order at the owner's
 request; 0.9.0 follows.
 
+Version 0.9.0 (2026-09-13)
+---------------------------
+- The control scheme is data: data/input.json replaces the KEYMAP dictionary. Actions
+  are defined once (display name, hold-vs-tap) and each profile only binds keys to
+  them, so the two can never disagree.
+- Two profiles, desktop and device, chosen by Game.on_device. Needed because the
+  PocketTerm's buttons send the SAME physical keycodes the development keyboard uses:
+  A is turn_left and wants to be use, X is strafe_right and wants to be run, R is
+  restart and wants to be strafe_right.
+- The agreed button scheme: D-pad moves and turns, L/R strafe, B fires, A uses, X runs,
+  Y is declared for v3.1's weapon switch, Select shows the fps counter, Start restarts.
+  Confirmed in the hand, every binding.
+- Touch is a second device bound to the same action ids: use on the left half, fire on
+  the right, tracked per finger. Inactive where no touchscreen is reported.
+- The table is validated at load - unknown action, unknown key, nothing bound, declared
+  but unbound, and the same key on two actions - for EVERY profile, not just the active
+  one, so a broken device profile fails on the Mac. tools/check_input_fixtures.sh is
+  the gate.
+- --smoke drives fire and use through action ids instead of calling the player's
+  methods, so a table that fails to load now fails the suite.
+
+NOTE ON ORDER: cut after 0.10.0, at the owner's request, so this tag contains 0.10.0's
+music and shotgun as well. VERSION stays at 0.10.0, which is the higher number and must
+not go backwards. Both phases are marked released in the roadmap.
+
 Version 0.8.0 (2026-09-12)
 ---------------------------
 - First tagged release. Prototype 0 shipped unversioned; this is the hardening pass

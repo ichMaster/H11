@@ -132,10 +132,11 @@ Every key in the `device` profile, and how it is known to be there:
 | ↑ ↓ ← → | move, turn | captured on the device (codes 103/108/105/106) |
 | X A B Y L R | run, use, fire, next weapon, strafe | captured, and confirmed in the hand |
 | Select (SysRq) · Start (Pause) | fps counter · restart | captured, and confirmed in the hand |
-| M | music on/off | bound in v0.10, **not yet confirmed on the panel** |
-| Escape | quit | inherited from the desktop scheme, **not yet confirmed on the panel** |
+| M | music on/off | bound in v0.10, confirmed in the hand |
+| Escape | quit | inherited from the desktop scheme, confirmed in the hand |
 
-The last two are the only bindings in the profile that have never been pressed on the device.
+Every binding in the profile has been pressed on the panel. The touch zones were confirmed the same
+way: left half opens a door, right half fires.
 
 ### Two profiles, because the codes collide
 

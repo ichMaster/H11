@@ -161,7 +161,7 @@ returning to the depth-shade value; `check_palette.py` gains a corrupt-file case
 **Release:** `0.8.0`.
 
 
-### v0.9 — Input as data
+### v0.9 — Input as data (released `0.9.0`)
 
 **Goal:** the control scheme is a file, decided once, instead of a dictionary that every later
 version quietly appends to.
@@ -231,7 +231,7 @@ bound key exists on the 67-key layout.
 
 
 
-### v0.10 — Music, and the first supplied asset
+### v0.10 — Music, and the first supplied asset (released `0.10.0`)
 
 **Goal:** the station has a score, the player can silence it, and the weapon sounds like a weapon.
 
