@@ -136,6 +136,10 @@ func _die() -> void:
 	# the billboard has to descend out of its float first or the corpse snaps
 	# to the ground the instant the texture swaps.
 	sprite.texture = TEX_DIE
+	# The killing blow set _flash, and the DEAD branch returns before the decay ever
+	# runs again - so without this the corpse keeps the hit tint forever, with a
+	# constant red channel that also ignores distance darkening.
+	_flash = 0.0
 	_die_timer = DIE_TIME
 	_bob_at_death = sprite.position.y - _base_y
 	collision_layer = 0
