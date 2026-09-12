@@ -1,0 +1,12 @@
+0. prototype
+1. project structure and redesign sprites to make them adopted for GPU
+2. more levels with differenct design and more enemies
+3. more weapons and effects of shooting
+4. finding new weapons and amunition (the same for all weapons)
+5. levels map mode and voice guidence of a Navigator
+6. walking efect
+7. blinking lights, smoke and more dinamic on objects
+9. more sound effects
+10. Server and multiusers
+11. AI bots
+12. AI for realtime level changes
