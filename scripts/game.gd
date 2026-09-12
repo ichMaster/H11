@@ -83,10 +83,14 @@ func _setup_input() -> void:
 		_input_failed("table is not a JSON object")
 		return
 	var name := "device" if on_device else "desktop"
-	var problem := _validate_input(table, name)
-	if problem != "":
-		_input_failed(problem)
-		return
+	# Validate EVERY profile, not just the one about to be applied: a broken device
+	# profile that is only checked on the device is found by hands, in the dark, with
+	# no console - and the Mac is where it would have been cheap to catch.
+	for other: String in table.get("profiles", {}):
+		var problem := _validate_input(table, other)
+		if problem != "":
+			_input_failed(problem)
+			return
 	var profile: Dictionary = table["profiles"][name]["bind"]
 	for action: String in profile:
 		if not InputMap.has_action(action):

@@ -212,8 +212,10 @@ func _run_smoke() -> void:
 	# 1a. contract: the action table built the InputMap it declares (H11-016). Without
 	# this the table could silently fail to load and every check below would still pass,
 	# because they drive the player's methods directly rather than its input.
-	var want := ["move_forward", "move_back", "turn_left", "turn_right", "strafe_left",
-		"strafe_right", "run", "fire", "use", "toggle_fps", "restart", "quit"]
+	# Derived from the table, not a literal: a hardcoded list silently stops covering
+	# an action the moment one is added.
+	var decl: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Game.INPUT_TABLE)).get("actions", {})
+	var want: Array = decl.keys()
 	var missing: Array[String] = []
 	var unbound: Array[String] = []
 	for a in want:

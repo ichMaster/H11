@@ -1,55 +1,154 @@
 {
   "note": "The control scheme. Actions are defined once; each profile only binds keys to them, so a display name or a hold/tap rule can never disagree between profiles. Key names are Godot keycode names (OS.find_keycode_from_string); an unknown one fails at load. See specification/ARCHITECTURE.md section Input.",
-
   "actions": {
-    "move_forward": { "display": "Move forward", "hold": true },
-    "move_back":    { "display": "Move back",    "hold": true },
-    "turn_left":    { "display": "Turn left",    "hold": true },
-    "turn_right":   { "display": "Turn right",   "hold": true },
-    "strafe_left":  { "display": "Strafe left",  "hold": true },
-    "strafe_right": { "display": "Strafe right", "hold": true },
-    "run":          { "display": "Run",          "hold": true },
-    "fire":         { "display": "Fire",         "hold": true },
-    "use":          { "display": "Use",          "hold": false },
-    "toggle_fps":   { "display": "FPS counter",  "hold": false },
-    "restart":      { "display": "Restart",      "hold": false },
-    "quit":         { "display": "Quit",         "hold": false }
+    "move_forward": {
+      "display": "Move forward",
+      "hold": true
+    },
+    "move_back": {
+      "display": "Move back",
+      "hold": true
+    },
+    "turn_left": {
+      "display": "Turn left",
+      "hold": true
+    },
+    "turn_right": {
+      "display": "Turn right",
+      "hold": true
+    },
+    "strafe_left": {
+      "display": "Strafe left",
+      "hold": true
+    },
+    "strafe_right": {
+      "display": "Strafe right",
+      "hold": true
+    },
+    "run": {
+      "display": "Run",
+      "hold": true
+    },
+    "fire": {
+      "display": "Fire",
+      "hold": true
+    },
+    "use": {
+      "display": "Use",
+      "hold": false
+    },
+    "toggle_fps": {
+      "display": "FPS counter",
+      "hold": false
+    },
+    "restart": {
+      "display": "Restart",
+      "hold": false
+    },
+    "quit": {
+      "display": "Quit",
+      "hold": false
+    },
+    "next_weapon": {
+      "display": "Next weapon",
+      "hold": false
+    }
   },
-
   "profiles": {
     "desktop": {
       "note": "The development scheme, on a full-size keyboard. Moved verbatim from the KEYMAP dictionary it replaced.",
       "bind": {
-        "move_forward": ["W", "Up"],
-        "move_back":    ["S", "Down"],
-        "turn_left":    ["A", "Left"],
-        "turn_right":   ["D", "Right"],
-        "strafe_left":  ["Q", "Z"],
-        "strafe_right": ["E", "X"],
-        "run":          ["Shift"],
-        "fire":         ["Space", "Ctrl"],
-        "use":          ["F", "Enter"],
-        "toggle_fps":   ["F3"],
-        "restart":      ["R"],
-        "quit":         ["Escape"]
+        "move_forward": [
+          "W",
+          "Up"
+        ],
+        "move_back": [
+          "S",
+          "Down"
+        ],
+        "turn_left": [
+          "A",
+          "Left"
+        ],
+        "turn_right": [
+          "D",
+          "Right"
+        ],
+        "strafe_left": [
+          "Q",
+          "Z"
+        ],
+        "strafe_right": [
+          "E",
+          "X"
+        ],
+        "run": [
+          "Shift"
+        ],
+        "fire": [
+          "Space",
+          "Ctrl"
+        ],
+        "use": [
+          "F",
+          "Enter"
+        ],
+        "toggle_fps": [
+          "F3"
+        ],
+        "restart": [
+          "R"
+        ],
+        "quit": [
+          "Escape"
+        ],
+        "next_weapon": [
+          "Tab"
+        ]
       }
     },
-
     "device": {
-      "note": "The PocketTerm. Filled with the agreed button scheme in H11-018; identical to desktop until then so the device is never left unbound.",
+      "note": "The PocketTerm's own buttons, captured in H11-015 and H11-018. The D-pad sends the arrow keycodes (103/108/105/106); Select is SysRq, Start is Pause. Shoulders strafe, which is what every handheld Doom port settled on.",
       "bind": {
-        "move_forward": ["W", "Up"],
-        "move_back":    ["S", "Down"],
-        "turn_left":    ["A", "Left"],
-        "turn_right":   ["D", "Right"],
-        "strafe_left":  ["Q", "Z"],
-        "strafe_right": ["E", "X"],
-        "run":          ["Shift"],
-        "fire":         ["Space", "Ctrl"],
-        "use":          ["F", "Enter"],
-        "toggle_fps":   ["F3"],
-        "restart":      ["R"],
-        "quit":         ["Escape"]
+        "move_forward": [
+          "Up"
+        ],
+        "move_back": [
+          "Down"
+        ],
+        "turn_left": [
+          "Left"
+        ],
+        "turn_right": [
+          "Right"
+        ],
+        "strafe_left": [
+          "L"
+        ],
+        "strafe_right": [
+          "R"
+        ],
+        "run": [
+          "X"
+        ],
+        "fire": [
+          "B"
+        ],
+        "use": [
+          "A"
+        ],
+        "next_weapon": [
+          "Y"
+        ],
+        "toggle_fps": [
+          "SysReq"
+        ],
+        "restart": [
+          "Pause"
+        ],
+        "quit": [
+          "Escape"
+        ]
       }
     }
   }
