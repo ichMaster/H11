@@ -76,26 +76,71 @@ func reset() -> void:
 func _setup_input() -> void:
 	var text := FileAccess.get_file_as_string(INPUT_TABLE)
 	if text == "":
-		push_error("Input table not found: " + INPUT_TABLE)
+		_input_failed("table not found at " + INPUT_TABLE)
 		return
 	var table: Variant = JSON.parse_string(text)
 	if typeof(table) != TYPE_DICTIONARY:
-		push_error("Input table is not a JSON object: " + INPUT_TABLE)
+		_input_failed("table is not a JSON object")
 		return
 	var name := "device" if on_device else "desktop"
-	var profile: Variant = table.get("profiles", {}).get(name, {}).get("bind", {})
-	if typeof(profile) != TYPE_DICTIONARY or profile.is_empty():
-		push_error("Input table has no '%s' profile" % name)
+	var problem := _validate_input(table, name)
+	if problem != "":
+		_input_failed(problem)
 		return
+	var profile: Dictionary = table["profiles"][name]["bind"]
 	for action: String in profile:
 		if not InputMap.has_action(action):
 			InputMap.add_action(action)
 		for key_name: String in profile[action]:
-			var code := OS.find_keycode_from_string(key_name)
 			var ev := InputEventKey.new()
-			ev.physical_keycode = code
+			ev.physical_keycode = OS.find_keycode_from_string(key_name)
 			InputMap.action_add_event(action, ev)
 	input_profile = name
+
+
+## Checks the table before a single action is registered. Not asserts: those are
+## stripped from release builds, and a half-applied InputMap on the device is the
+## kind of failure that shows up as "the buttons do nothing" with no clue why.
+## Returns "" when the profile is sound, or the first problem, named.
+func _validate_input(table: Dictionary, profile_name: String) -> String:
+	var actions: Variant = table.get("actions")
+	if typeof(actions) != TYPE_DICTIONARY or actions.is_empty():
+		return "table has no 'actions' block"
+	var profiles: Variant = table.get("profiles")
+	if typeof(profiles) != TYPE_DICTIONARY or not profiles.has(profile_name):
+		return "table has no '%s' profile" % profile_name
+	var bind: Variant = profiles[profile_name].get("bind")
+	if typeof(bind) != TYPE_DICTIONARY or bind.is_empty():
+		return "profile '%s' binds nothing" % profile_name
+
+	var seen := {}  # keycode -> the action that claimed it
+	for action: String in bind:
+		if not actions.has(action):
+			return "profile '%s' binds unknown action '%s'" % [profile_name, action]
+		var keys: Variant = bind[action]
+		if typeof(keys) != TYPE_ARRAY or keys.is_empty():
+			return "action '%s' in profile '%s' is bound to nothing" % [action, profile_name]
+		for key_name: String in keys:
+			var code := OS.find_keycode_from_string(key_name)
+			if code == KEY_NONE:
+				return "action '%s' binds unknown key '%s'" % [action, key_name]
+			# A key on two actions is a conflict, not last-writer-wins: both would
+			# fire, and which one the player meant is unknowable.
+			if seen.has(code):
+				return "key '%s' is bound to both '%s' and '%s' in profile '%s'" % [
+					key_name, seen[code], action, profile_name]
+			seen[code] = action
+	for action: String in actions:
+		if not bind.has(action):
+			return "action '%s' is declared but profile '%s' never binds it" % [action, profile_name]
+	return ""
+
+
+func _input_failed(why: String) -> void:
+	push_error("Invalid input table: " + why)
+	# The message needs a listener, and nothing is connected this early - so defer it
+	# to the frame the HUD exists in.
+	call_deferred("say", "BAD INPUT TABLE: " + why.to_upper())
 
 
 func _setup_audio() -> void:
