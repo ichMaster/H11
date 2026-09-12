@@ -111,8 +111,42 @@ func _parse(path: String) -> void:
 			in_map = true
 	height = grid.size()
 	width = grid[0].length() if height > 0 else 0
-	for row in grid:
-		assert(row.length() == width, "All map rows must have the same length")
+	if not _validate(path):
+		grid.clear()
+		width = 0
+		height = 0
+
+
+## Checks the invariants the builder relies on. Not asserts: those are stripped from
+## release builds, so a ragged deck used to reach the device as collision holes and
+## nothing else. Returns false and reports the first failure by name.
+func _validate(path: String) -> bool:
+	var problems: Array[String] = []
+	if height == 0:
+		problems.append("no map rows after the 'map:' line")
+	for y in grid.size():
+		if grid[y].length() != width:
+			problems.append("row %d is %d cells, expected %d" % [y, grid[y].length(), width])
+			break
+	var starts := 0
+	var unknown := {}
+	for y in grid.size():
+		for x in grid[y].length():
+			var c := grid[y][x]
+			if c == "P":
+				starts += 1
+			if not (WALL_TEX.has(c) or c in WALKABLE):
+				unknown[c] = true
+	if starts != 1:
+		problems.append("expected exactly one player start 'P', found %d" % starts)
+	if not unknown.is_empty():
+		problems.append("unknown map characters: %s" % " ".join(unknown.keys()))
+	if problems.is_empty():
+		return true
+	var why: String = problems[0]
+	push_error("Invalid deck %s: %s" % [path, why])
+	Game.say("BAD DECK: " + why.to_upper())
+	return false
 
 
 # --- geometry --------------------------------------------------------------
