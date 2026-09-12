@@ -150,11 +150,23 @@ Run with --build, or export from the editor: Project > Export > \"$PRESET\"."
 
 echo "==> deploying $(du -h "$BIN" | cut -f1) to $TARGET:~/$REMOTE_DIR/"
 "${SSH[@]}" "$TARGET" "mkdir -p ~/$REMOTE_DIR"
-# Stop the running game first: a busy binary cannot be overwritten.
+
+# Copy BEFORE stopping anything, to a temporary name, and swap only once the whole
+# file has arrived. Killing first and overwriting in place meant a dropped
+# connection or a full disk left the device with no running game and a truncated
+# binary - the one state from which the device cannot recover itself.
+LOCAL_SIZE="$(wc -c < "$BIN" | tr -d ' ')"
+"${SCP[@]}" "$BIN" "$TARGET:~/$REMOTE_DIR/$EXE.incoming" || die "copy failed; the device still has its previous build, still running"
+REMOTE_SIZE="$("${SSH[@]}" "$TARGET" "wc -c < ~/$REMOTE_DIR/$EXE.incoming" 2>/dev/null | tr -d ' \r')"
+if [ "$REMOTE_SIZE" != "$LOCAL_SIZE" ]; then
+	"${SSH[@]}" "$TARGET" "rm -f ~/$REMOTE_DIR/$EXE.incoming" || true
+	die "copy is $REMOTE_SIZE bytes, expected $LOCAL_SIZE; the device still has its previous build, still running"
+fi
+"${SCP[@]}" "$ROOT/tools/run_on_pi.sh" "$TARGET:~/$REMOTE_DIR/run_on_pi.sh.incoming" || die "copy of run_on_pi.sh failed; nothing on the device was touched"
+
+# Everything arrived. Now stop the game and swap - mv within one filesystem is atomic.
 "${SSH[@]}" "$TARGET" "pkill -x '$EXE' || true"
-"${SCP[@]}" "$BIN" "$TARGET:~/$REMOTE_DIR/$EXE"
-"${SCP[@]}" "$ROOT/tools/run_on_pi.sh" "$TARGET:~/$REMOTE_DIR/"
-"${SSH[@]}" "$TARGET" "chmod +x ~/$REMOTE_DIR/$EXE ~/$REMOTE_DIR/run_on_pi.sh"
+"${SSH[@]}" "$TARGET" "mv ~/$REMOTE_DIR/$EXE.incoming ~/$REMOTE_DIR/$EXE && mv ~/$REMOTE_DIR/run_on_pi.sh.incoming ~/$REMOTE_DIR/run_on_pi.sh && chmod +x ~/$REMOTE_DIR/$EXE ~/$REMOTE_DIR/run_on_pi.sh"
 
 if [ "$do_run" = 0 ]; then
 	echo "==> copied. Start it on the device with:  ~/$REMOTE_DIR/run_on_pi.sh"
