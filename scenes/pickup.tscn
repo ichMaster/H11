@@ -17,7 +17,7 @@ shape = SubResource("shape")
 
 [node name="Sprite3D" type="Sprite3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
-pixel_size = 0.03125
+pixel_size = 0.0078125
 billboard = 2
 texture_filter = 0
 alpha_cut = 1

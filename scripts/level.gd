@@ -23,6 +23,9 @@ const WALL_TEX := {
 	"X": "wall_exit",
 	"B": "wall_blood",
 	"1": "wall_h11",
+	"T": "wall_lab",     # glass containment box with a specimen
+	"C": "wall_pipes",   # burst coolant coupling, frost, biomass
+	"R": "wall_breach",  # hull breach, curled metal, rebar
 }
 const WALKABLE := ".PDKehak"
 const FACING_ROT := {"north": 0.0, "west": PI / 2.0, "south": PI, "east": -PI / 2.0}
@@ -81,7 +84,13 @@ func door_at(cell: Vector2i) -> Door:
 
 func _parse(path: String) -> void:
 	var text := FileAccess.get_file_as_string(path)
-	assert(text != "", "Level file not found: " + path)
+	# Not an assert: asserts are stripped from release builds, and a missing map
+	# would then show up as a silent black screen. The map is a plain .txt, so it
+	# only reaches an exported build through include_filter in export_presets.cfg.
+	if text == "":
+		push_error("Level file not found or empty: " + path)
+		Game.say("LEVEL FILE MISSING: " + path)
+		return
 	var in_map := false
 	for raw_line in text.split("\n"):
 		var line := raw_line.strip_edges(false, true)
@@ -105,15 +114,20 @@ func _parse(path: String) -> void:
 
 ## Shared depth-shaded material per texture. FOG_DENSITY is the single knob
 ## for how far you can see; sprites use the same value (see depth_shade()).
-const FOG_DENSITY := 0.085
+const FOG_DENSITY := 0.025
 const DEPTH_SHADER: Shader = preload("res://shaders/depth_shade.gdshader")
+## Mipmapped variant, used only by the two level-wide planes below. At 640x480 a
+## far-away floor texel is far smaller than a screen pixel, and nearest sampling
+## on a 32x22 tiling makes it crawl while walking.
+const DEPTH_SHADER_MIP: Shader = preload("res://shaders/depth_shade_mip.gdshader")
+const MIPMAPPED := ["floor", "ceiling"]
 
 
 func material_for(tex_name: String) -> ShaderMaterial:
 	if _materials.has(tex_name):
 		return _materials[tex_name]
 	var mat := ShaderMaterial.new()
-	mat.shader = DEPTH_SHADER
+	mat.shader = DEPTH_SHADER_MIP if tex_name in MIPMAPPED else DEPTH_SHADER
 	mat.set_shader_parameter("albedo_tex", load("res://assets/%s.png" % tex_name))
 	mat.set_shader_parameter("fog_density", FOG_DENSITY)
 	_materials[tex_name] = mat

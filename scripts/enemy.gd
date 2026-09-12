@@ -13,12 +13,23 @@ const ATTACK_COOLDOWN := 1.7
 const HP_MAX := 3
 const LAYER_WORLD := 1
 
+## The Chorus hangs in the air on a fringe of tubes, so these four frames are a
+## drift cycle - vertical bob and tube sway, no contact pose. They run on an even
+## timer whether the creature is moving or not; there is no footfall to sync to.
 const TEX_WALK: Array[Texture2D] = [
 	preload("res://assets/mutant_0.png"),
 	preload("res://assets/mutant_1.png"),
+	preload("res://assets/mutant_2.png"),
+	preload("res://assets/mutant_3.png"),
 ]
 const TEX_ATTACK: Texture2D = preload("res://assets/mutant_attack.png")
+const TEX_DIE: Texture2D = preload("res://assets/mutant_die.png")
 const TEX_DEAD: Texture2D = preload("res://assets/mutant_dead.png")
+
+const FRAME_TIME := 1.0 / 6.0  # drift cycle, ~6 fps
+const BOB_SPEED := 2.2
+const BOB_HEIGHT := 0.12  # metres; the art bobs too, this moves it through space
+const DIE_TIME := 0.2
 const SFX_GROWL: AudioStream = preload("res://assets/sfx/growl.wav")
 const SFX_STRIKE: AudioStream = preload("res://assets/sfx/drone_shot.wav")
 
@@ -36,22 +47,31 @@ var _anim_timer := 0.0
 var _anim_frame := 0
 var _flash := 0.0
 var _stuck_timer := 0.0
+var _bob := 0.0
+var _base_y := 0.0
+var _die_timer := 0.0
+var _bob_at_death := 0.0
 
 
 func _ready() -> void:
 	sprite.texture = TEX_WALK[0]
+	_base_y = sprite.position.y
+	_bob = randf() * TAU  # so a group of them does not pulse in unison
 	_think_timer = randf_range(0.0, 0.3)  # spread the thinking over frames
 
 
 func _physics_process(delta: float) -> void:
 	_apply_depth_shade()
 	if state == State.DEAD:
+		_settle(delta)
 		return
 	var player := Game.player
 	if player == null or Game.dead or Game.finished:
 		velocity = Vector3.ZERO
 		return
 
+	_float(delta)
+	_animate(delta)
 	_think_timer -= delta
 	_attack_timer -= delta
 	if _flash > 0.0:
@@ -78,7 +98,6 @@ func _physics_process(delta: float) -> void:
 				sprite.texture = TEX_ATTACK
 				return
 			_follow_path(delta, player, dist)
-			_animate(delta)
 		State.ATTACK:
 			velocity = Vector3.ZERO
 			if _attack_timer <= 0.0:
@@ -112,11 +131,28 @@ func hit(damage: int) -> void:
 func _die() -> void:
 	state = State.DEAD
 	velocity = Vector3.ZERO
-	sprite.texture = TEX_DEAD
+	# mutant_die is the shell sinking - one horn snapped, carapace split, eyes
+	# going out. mutant_dead that follows is a collapsed shell ON THE FLOOR, so
+	# the billboard has to descend out of its float first or the corpse snaps
+	# to the ground the instant the texture swaps.
+	sprite.texture = TEX_DIE
+	_die_timer = DIE_TIME
+	_bob_at_death = sprite.position.y - _base_y
 	collision_layer = 0
 	collision_mask = 0
 	Game.play("explode", -2.0)
 	Game.register_kill()
+
+
+func _settle(delta: float) -> void:
+	if _die_timer <= 0.0:
+		return
+	_die_timer -= delta
+	var t: float = clampf(1.0 - _die_timer / DIE_TIME, 0.0, 1.0)
+	sprite.position.y = _base_y + _bob_at_death * (1.0 - t)
+	if _die_timer <= 0.0:
+		sprite.position.y = _base_y
+		sprite.texture = TEX_DEAD
 
 
 func _can_see(player: Node3D) -> bool:
@@ -180,11 +216,21 @@ func _strike(player: Node3D, dist: float) -> void:
 		Game.damage(randi_range(4, 11))
 
 
+## Moves the billboard through space. The art bobs on its own, but without this
+## the creature reads as standing on its tubes rather than hanging above them.
+func _float(delta: float) -> void:
+	_bob += delta
+	sprite.position.y = _base_y + sin(_bob * BOB_SPEED) * BOB_HEIGHT
+
+
+## Drift cycle. Runs on an even timer whether the creature is moving or not -
+## it floats, so there is nothing to stand still for. The attack frame is a tell
+## and must not be cycled away from.
 func _animate(delta: float) -> void:
-	if velocity.length() < 0.1:
+	if state == State.ATTACK:
 		return
 	_anim_timer += delta
-	if _anim_timer > 0.28:
+	if _anim_timer > FRAME_TIME:
 		_anim_timer = 0.0
 		_anim_frame = (_anim_frame + 1) % TEX_WALK.size()
 		sprite.texture = TEX_WALK[_anim_frame]

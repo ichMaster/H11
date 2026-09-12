@@ -7,7 +7,7 @@ uniform sampler2D albedo_tex : source_color, filter_nearest, repeat_enable;
 uniform vec4 tint : source_color = vec4(1.0, 1.0, 1.0, 1.0);
 uniform vec2 uv_scale = vec2(1.0, 1.0);
 // 0.06 = you can see far down the corridor, 0.16 = only a few cells.
-uniform float fog_density = 0.085;
+uniform float fog_density = 0.025;
 uniform vec3 fog_color : source_color = vec3(0.0, 0.0, 0.0);
 
 varying float depth_fade;

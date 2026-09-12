@@ -8,9 +8,20 @@ extends Node
 ##   godot --headless --path . -- --smoke
 ##       Headless gameplay smoke test: locked door, keycard, unlocking, killing a
 ##       mutant, reaching the exit. Prints PASS/FAIL lines and exits 0/1.
+##
+##   godot --path . -- --bench=15 --bench-res=640x480
+##       Spins the player on the spot for N seconds and reports frame timings, so
+##       the cost of a render resolution can be measured on the device instead of
+##       guessed. --bench-res overrides the logical viewport (default: leave it).
+##       The 60 fps cap is lifted during a bench, otherwise there is no headroom
+##       to see.
 
 var out_dir := ""
 var smoke := false
+var bench := 0.0
+var bench_res := Vector2i.ZERO
+var _bench_t := 0.0
+var _bench_ms: PackedFloat32Array = PackedFloat32Array()
 var _steps: Array = []
 var _t := 0.0
 var _shot := 0
@@ -24,8 +35,17 @@ func _ready() -> void:
 			out_dir = arg.substr(8)
 		elif arg == "--smoke":
 			smoke = true
-	if out_dir == "" and not smoke:
+		elif arg.begins_with("--bench="):
+			bench = maxf(1.0, arg.substr(8).to_float())
+		elif arg.begins_with("--bench-res="):
+			var parts := arg.substr(12).split("x")
+			if parts.size() == 2:
+				bench_res = Vector2i(int(parts[0]), int(parts[1]))
+	if out_dir == "" and not smoke and bench <= 0.0:
 		queue_free()
+		return
+	if bench > 0.0:
+		_start_bench()
 		return
 	Game.message.connect(func(t: String) -> void: _last_message = t)
 	if smoke:
@@ -53,7 +73,48 @@ func _ready() -> void:
 	print("[drive] writing screenshots to ", out_dir)
 
 
+func _start_bench() -> void:
+	var win := get_window()
+	if bench_res != Vector2i.ZERO:
+		win.content_scale_size = bench_res
+	# Uncapped and without vsync, or the result is the monitor's refresh rate
+	# rather than what the hardware can actually do.
+	Engine.max_fps = 0
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	print("[bench] render %dx%d, window %dx%d, %.0fs" % [
+		win.content_scale_size.x, win.content_scale_size.y,
+		win.size.x, win.size.y, bench])
+
+
+func _run_bench(delta: float) -> void:
+	_bench_t += delta
+	# Turn on the spot so the whole level passes through the view, not one wall.
+	if Game.player != null:
+		Game.player.rotation.y += delta * TAU / bench
+	if _bench_t > 2.0:  # warm-up: shader compiles and the first frames are noise
+		_bench_ms.append(delta * 1000.0)
+	if _bench_t < bench:
+		return
+	var ms := Array(_bench_ms)
+	ms.sort()
+	var total := 0.0
+	for v in ms:
+		total += v
+	var n := ms.size()
+	var avg: float = total / maxf(1.0, n)
+	var p99: float = ms[int(n * 0.99)] if n > 0 else 0.0
+	var worst: float = ms[n - 1] if n > 0 else 0.0
+	var win := get_window()
+	print("[bench] %dx%d  frames=%d  avg=%.2fms (%.0f fps)  1%%low=%.2fms (%.0f fps)  worst=%.2fms" % [
+		win.content_scale_size.x, win.content_scale_size.y, n,
+		avg, 1000.0 / maxf(0.01, avg), p99, 1000.0 / maxf(0.01, p99), worst])
+	get_tree().quit()
+
+
 func _process(delta: float) -> void:
+	if bench > 0.0:
+		_run_bench(delta)
+		return
 	if smoke:
 		return
 	_t += delta

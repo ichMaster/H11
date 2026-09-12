@@ -230,3 +230,8 @@ __marimo__/
 
 # --- macOS -------------------------------------------------------------------
 .DS_Store
+
+# --- Local device credentials ------------------------------------------------
+# Connection details for the PocketTerm35 (ip/user/password/wifi). Read at
+# runtime by tools/deploy_to_term35.sh. MUST never be committed.
+.term35-connect.txt

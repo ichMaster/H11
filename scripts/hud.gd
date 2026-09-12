@@ -3,16 +3,20 @@ extends CanvasLayer
 ## Everything is built in code so the layout lives in one place; the logical
 ## screen is 320x240 (scaled 2x to the PocketTerm's 640x480).
 
-const SCREEN := Vector2(320, 240)
-const BAR_H := 28
-const FONT_SMALL := 8
-const FONT_BIG := 16
+const SCREEN := Vector2(640, 480)
+const BAR_H := 64
+const FONT_SMALL := 16
+const FONT_BIG := 32
 const MESSAGE_TIME := 2.6
 
 const WEAPON_IDLE: Texture2D = preload("res://assets/weapon_0.png")
 const WEAPON_FIRE: Texture2D = preload("res://assets/weapon_1.png")
 const CROSSHAIR: Texture2D = preload("res://assets/crosshair.png")
-const KEYCARD: Texture2D = preload("res://assets/keycard.png")
+## The status bar is a painted texture now: the accent line, the HEALTH / AMMO /
+## MUTANTS / KEY captions and the H11 // DECK 1 nameplate are all in the PNG.
+## Code draws only the numbers and the key icon.
+const BAR_TEX: Texture2D = preload("res://assets/hud_bar.png")
+const KEYCARD: Texture2D = preload("res://assets/hud_keycard.png")
 
 var _weapon: TextureRect
 var _flash: ColorRect
@@ -54,53 +58,45 @@ func _build() -> void:
 	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_flash)
 
-	# weapon, sitting on top of the status bar
+	# weapon, 192x144 drawn 1:1, sitting on top of the status bar
 	_weapon = TextureRect.new()
 	_weapon.texture = WEAPON_IDLE
-	_weapon.position = Vector2(112, SCREEN.y - BAR_H - 72)
-	_weapon.size = Vector2(96, 72)
+	_weapon.position = Vector2(260, SCREEN.y - BAR_H - 144)
+	_weapon.size = Vector2(192, 144)
 	add_child(_weapon)
 
 	var cross := TextureRect.new()
 	cross.texture = CROSSHAIR
-	cross.position = Vector2(156, 116)
+	cross.position = Vector2(312, 232)
 	cross.modulate = Color(1, 1, 1, 0.7)
 	add_child(cross)
 
-	# status bar
-	var bar := ColorRect.new()
-	bar.color = Color(0.04, 0.04, 0.05)
+	# status bar: one painted texture, never scaled
+	var bar := TextureRect.new()
+	bar.texture = BAR_TEX
+	bar.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	bar.position = Vector2(0, SCREEN.y - BAR_H)
 	bar.size = Vector2(SCREEN.x, BAR_H)
 	add_child(bar)
-	var line := ColorRect.new()
-	line.color = Color(0.45, 0.08, 0.08)
-	line.position = Vector2(0, SCREEN.y - BAR_H)
-	line.size = Vector2(SCREEN.x, 1)
-	add_child(line)
 
-	_label(Vector2(8, SCREEN.y - BAR_H + 3), "HEALTH", Color(0.6, 0.6, 0.62))
-	_health = _label(Vector2(8, SCREEN.y - BAR_H + 13), "100", Color(0.9, 0.2, 0.2), FONT_SMALL + 2)
-	_label(Vector2(72, SCREEN.y - BAR_H + 3), "AMMO", Color(0.6, 0.6, 0.62))
-	_ammo = _label(Vector2(72, SCREEN.y - BAR_H + 13), "24", Color(0.85, 0.6, 0.2), FONT_SMALL + 2)
-	_label(Vector2(128, SCREEN.y - BAR_H + 3), "MUTANTS", Color(0.6, 0.6, 0.62))
-	_kills = _label(Vector2(128, SCREEN.y - BAR_H + 13), "0/0", Color(0.75, 0.75, 0.78), FONT_SMALL + 2)
-	_label(Vector2(200, SCREEN.y - BAR_H + 3), "KEY", Color(0.6, 0.6, 0.62))
+	# only the numbers, into the windows painted in the bar
+	_health = _window(Vector2(14, 442), Vector2(128, 26), "100", Color(0.9, 0.2, 0.2))
+	_ammo = _window(Vector2(162, 442), Vector2(112, 26), "24", Color(0.85, 0.6, 0.2))
+	_kills = _window(Vector2(294, 442), Vector2(128, 26), "0/0", Color(0.75, 0.75, 0.78))
+	# the socket painted into hud_bar.png is 36x36 at (456, 436); the icon is
+	# 32x32 and sits two pixels inside it. Nothing is scaled.
 	_key_icon = TextureRect.new()
 	_key_icon.texture = KEYCARD
-	_key_icon.position = Vector2(196, SCREEN.y - BAR_H - 20)
-	_key_icon.size = Vector2(64, 64)
-	_key_icon.scale = Vector2(0.5, 0.5)
+	_key_icon.position = Vector2(458, 438)
+	_key_icon.size = Vector2(32, 32)
 	_key_icon.visible = false
 	add_child(_key_icon)
-	_label(Vector2(262, SCREEN.y - BAR_H + 3), "H11", Color(0.55, 0.12, 0.1), FONT_SMALL + 2)
-	_label(Vector2(262, SCREEN.y - BAR_H + 15), "DECK 1", Color(0.4, 0.4, 0.42))
 
 	# message line and fps
-	_message = _label(Vector2(0, 6), "", Color(0.9, 0.85, 0.7), FONT_SMALL + 1)
-	_message.size = Vector2(SCREEN.x, 12)
+	_message = _label(Vector2(0, 12), "", Color(0.9, 0.85, 0.7), FONT_SMALL + 2)
+	_message.size = Vector2(SCREEN.x, 24)
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_fps = _label(Vector2(SCREEN.x - 40, 4), "", Color(0.5, 0.9, 0.5))
+	_fps = _label(Vector2(SCREEN.x - 80, 8), "", Color(0.5, 0.9, 0.5))
 	_fps.visible = false
 
 	# end-of-level / death overlay
@@ -109,14 +105,24 @@ func _build() -> void:
 	_overlay.size = SCREEN
 	_overlay.visible = false
 	add_child(_overlay)
-	_overlay_title = _label(Vector2(0, 92), "", Color(0.9, 0.2, 0.2), FONT_BIG)
-	_overlay_title.size = Vector2(SCREEN.x, 24)
+	_overlay_title = _label(Vector2(0, 184), "", Color(0.9, 0.2, 0.2), FONT_BIG)
+	_overlay_title.size = Vector2(SCREEN.x, 48)
 	_overlay_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_overlay_title.visible = false
-	_overlay_sub = _label(Vector2(0, 122), "", Color(0.8, 0.8, 0.8), FONT_SMALL + 1)
-	_overlay_sub.size = Vector2(SCREEN.x, 12)
+	_overlay_sub = _label(Vector2(0, 244), "", Color(0.8, 0.8, 0.8), FONT_SMALL + 2)
+	_overlay_sub.size = Vector2(SCREEN.x, 24)
 	_overlay_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_overlay_sub.visible = false
+
+
+## A number sitting in one of the windows painted into hud_bar.png: centred both
+## ways inside the given rect, so the digits never drift as the value changes.
+func _window(pos: Vector2, size: Vector2, text: String, color: Color) -> Label:
+	var l := _label(pos, text, color, FONT_SMALL + 4)
+	l.size = size
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	return l
 
 
 func _label(pos: Vector2, text: String, color: Color, font_size: int = FONT_SMALL) -> Label:
