@@ -209,6 +209,17 @@ func _run_smoke() -> void:
 	_check("locked door reports LOCKED", _last_message.begins_with("LOCKED"))
 	_check("door stays locked", door.locked and not door.is_open())
 
+	# 1b. every pickup wears its own sprite (H11-005: _ready stamped the default kind
+	# before setup assigned the real one, so ammo and keycards looked like medkits)
+	var wrong_sprite := 0
+	var pickups := 0
+	for n in level.get_children():
+		if n is Area3D and n.has_method("setup"):
+			pickups += 1
+			if n.sprite.texture != n.TEXTURES[n.kind]:
+				wrong_sprite += 1
+	_check("pickups wear their own sprite (%d checked)" % pickups, pickups > 0 and wrong_sprite == 0)
+
 	# 2. keycard pickup on touch
 	await _place(level, Vector2i(25, 10), Vector2i(26, 10))
 	await _frames(10)
@@ -250,6 +261,13 @@ func _run_smoke() -> void:
 		_check("ammo consumed", Game.ammo < ammo_before)
 		_check("mutant dead", enemy.state == enemy.State.DEAD)
 		_check("kill counted", Game.kills == 1)
+		# H11-004: the hit flash used to survive death, leaving a permanently red corpse
+		# whose constant red channel also ignored distance darkening.
+		await _frames(30)
+		var shade: float = level.depth_shade(enemy.global_position)
+		var m: Color = enemy.sprite.modulate
+		_check("corpse is depth-shaded, not flash-red",
+			absf(m.r - shade) < 0.02 and absf(m.g - shade) < 0.02)
 
 	# 5. exit panel finishes the level
 	await _place(level, Vector2i(28, 18), Vector2i(29, 18))
